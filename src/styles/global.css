@@ -14,7 +14,7 @@
   --font-serif: 'Instrument Serif', serif;
 
   /* fluid nav height + capped content shell (SPEC V13) */
-  --nav-h: clamp(58px, 4.4vw, 76px);
+  --nav-h: clamp(56px, 3.8vw, 68px);
   --shell-max: 1720px;
 }
 

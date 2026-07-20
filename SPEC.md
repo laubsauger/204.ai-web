@@ -63,3 +63,4 @@ id|date|cause|fix
 B1|2026-07-20|work hover preview absolute w/o viewport clamp → clipped bottom + grew doc scroll|V11 + useLayoutEffect clamp
 B2|2026-07-20|nav status lines not optically flush right (block/text-align)|flex column + flex-end, cosmetic
 B3|2026-07-20|t-display tracking -0.02em (prototype = -0.02px ≈ none) + fixed 1280-design px caps → tiny type + dead space on large/hidpi screens|V12 + fluid clamps
+B4|2026-07-20|home not composed to viewport: fixed-height hero + oversized strap pushed CTA below fold on FHD; fixed-width chapter thumbs forced rail taller than hero (last item clipped); nav divider floating|hero flex-fills 100dvh-composed root, strap 6.2vw, thumbs derive width from row height, status divider stretched

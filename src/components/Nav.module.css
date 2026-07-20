@@ -79,7 +79,7 @@
 
 .status {
   margin-left: auto;
-  padding-left: 20px;
+  padding-left: 22px;
   border-left: 1px solid var(--hairline);
   font-family: var(--font-mono);
   font-size: clamp(10px, 0.78vw, 13px);
@@ -89,6 +89,9 @@
   display: flex;
   flex-direction: column;
   align-items: flex-end;
+  justify-content: center;
+  /* divider spans the full bar so it connects to the bottom border */
+  align-self: stretch;
   gap: 2px;
   /* trailing letter-spacing after the last glyph — pull back so both
      lines sit optically flush right */
