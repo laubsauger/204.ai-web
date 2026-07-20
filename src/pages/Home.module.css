@@ -273,6 +273,10 @@
   .captionRight {
     display: none;
   }
+
+  .chapterCat {
+    display: none;
+  }
 }
 
 @media (max-width: 900px) {
@@ -298,13 +302,28 @@
     border-top: 1px solid rgba(255, 255, 255, 0.08);
   }
 
+  .railList {
+    flex: none;
+  }
+
   .chapter {
-    padding: 10px 16px;
+    /* natural-height rows — flex-fill collapses inside an auto-height rail */
+    flex: none;
+    overflow: visible;
+    padding: 12px 16px;
+  }
+
+  .chapterCat {
+    position: static;
+    order: 3;
+    margin-left: auto;
+    align-self: flex-start;
   }
 
   .thumb {
-    height: auto;
-    width: 96px;
+    width: 112px;
+    height: 63px;
+    min-height: 0;
     max-height: none;
   }
 
