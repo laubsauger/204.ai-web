@@ -3,7 +3,7 @@
 }
 
 .title {
-  font-size: clamp(44px, 6.9vw, 132px);
+  font-size: clamp(44px, 6.9vw, 92px);
   color: var(--fg);
   margin: 0 0 44px;
   max-width: 80%;
@@ -62,7 +62,7 @@
 }
 
 .cardLabel {
-  font-size: clamp(32px, 4vw, 78px);
+  font-size: clamp(32px, 4vw, 56px);
   color: var(--fg);
   margin: 0 0 20px;
   transition: text-shadow 0.25s;

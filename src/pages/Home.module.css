@@ -187,7 +187,7 @@
 
 .chapterTitle {
   display: block;
-  font-size: clamp(16px, 1.35vw, 24px);
+  font-size: clamp(16px, 1.2vw, 20px);
   line-height: 1.05;
   margin-bottom: 3px;
 }
@@ -207,7 +207,7 @@
 .strapType {
   /* ~80px at the 1280 design width, grows on wider screens; sized so
      hero + strap + intro + CTA fit a 1080p fold */
-  font-size: clamp(44px, 6.2vw, 118px);
+  font-size: clamp(44px, 6.2vw, 96px);
   color: var(--fg);
   margin: 0;
 }

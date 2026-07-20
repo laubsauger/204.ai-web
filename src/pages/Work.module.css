@@ -93,7 +93,7 @@
 }
 
 .cellTitle {
-  font-size: clamp(20px, 2.2vw, 42px);
+  font-size: clamp(20px, 2.2vw, 30px);
   transition: color 0.12s;
   position: relative;
 }

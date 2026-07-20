@@ -52,6 +52,7 @@ export function MediaStill({ scene, media, mini = false, playing = false, letter
           src={media.still ?? media.video?.mp4}
           alt=""
           loading="lazy"
+          className={playing && !reducedMotion ? 'kenburns' : undefined}
           style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
         />
       )}

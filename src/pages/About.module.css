@@ -6,7 +6,7 @@
 }
 
 .title {
-  font-size: clamp(44px, 6.6vw, 126px);
+  font-size: clamp(44px, 6.6vw, 88px);
   color: var(--fg);
   line-height: 0.9;
   margin: 0;
@@ -29,7 +29,7 @@
 }
 
 .statValue {
-  font-size: clamp(32px, 3.4vw, 66px);
+  font-size: clamp(32px, 3.4vw, 48px);
   color: var(--fg);
 }
 

@@ -7,7 +7,7 @@ export function NotFound() {
   return (
     <div style={{ padding: '96px 28px', maxWidth: 720 }}>
       <div className="t-label" style={{ marginBottom: 8 }}>§ ∅ / NOT FOUND</div>
-      <h1 className="t-display" style={{ fontSize: 'clamp(56px, 10vw, 120px)', margin: 0 }}>
+      <h1 className="t-display" style={{ fontSize: 'clamp(56px, 10vw, 100px)', margin: 0 }}>
         404<span style={{ color: 'var(--dim)' }}>—</span>
         <span style={{ color: 'var(--accent)' }}>NO</span> PAGE
       </h1>

@@ -147,8 +147,8 @@ function HoverPreview({ w, anchor }: { w: WorkItem; anchor: { x: number; y: numb
       <div className={styles.previewStill}>
         <MediaStill scene={w.scene} media={w.media} playing />
         <div className={`t-mono ${styles.previewBadge}`}>
-          <span className={styles.previewPulse} />
-          AUTOPLAY
+          {w.media?.video && <span className={styles.previewPulse} />}
+          {w.media?.video ? 'AUTOPLAY' : 'PREVIEW'}
         </div>
         {hasRuntime && (
           <div className={`t-mono ${styles.previewTimecode}`}>

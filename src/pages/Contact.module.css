@@ -6,7 +6,7 @@
 }
 
 .title {
-  font-size: clamp(48px, 7.8vw, 150px);
+  font-size: clamp(48px, 7.8vw, 104px);
   color: var(--fg);
   line-height: 0.88;
   margin: 0;
