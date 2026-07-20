@@ -25,7 +25,7 @@ Ship production static site for studio "204 · NO-CONTENT". Implement design/ Di
 - V1: prod bundle contains zero references to unpkg/babel-standalone/react.development. `grep -r "unpkg\|babel" dist/assets` → empty.
 - V2: token values in code match §C4 exactly; defined once in `:root` CSS vars; components reference vars, never re-hardcode hex (exception: SVG scene art inside CinematicStill).
 - V3: all 5 routes deep-linkable: direct URL load renders correct page (SPA fallback).
-- V4: fonts + app code self-hosted, no third-party JS/CSS at runtime. TEMP exception (until redesign approved, then self-host): project media (img/video) may hotlink cdn.prod.website-files.com; youtube embeds allowed on demand-load.
+- V4: fonts + app code self-hosted, no third-party JS/CSS at runtime. TEMP exception (until redesign approved, then self-host): project media (img/video) may hotlink cdn.prod.website-files.com; youtube embeds + OSM map tiles allowed on demand-load (click-to-load only).
 - V5: `npm run build` exits 0 with zero TS errors. `npm run lint` exits 0.
 - V6: no horizontal overflow at 360px, 768px, 1280px, 1920px viewport widths.
 - V7: rAF/interval animations (CinematicStill, hover preview timecode) gated by `prefers-reduced-motion: reduce` → static frame.

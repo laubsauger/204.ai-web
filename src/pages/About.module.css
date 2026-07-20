@@ -153,3 +153,92 @@
     padding-top: 24px;
   }
 }
+
+/* ─── find us ─── */
+.findUs {
+  margin-top: 28px;
+}
+
+.addressRow {
+  display: grid;
+  grid-template-columns: 90px 1fr;
+  gap: 16px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--hairline);
+  font-size: 11px;
+  color: var(--fg);
+}
+
+.addressKey {
+  color: var(--dim);
+  letter-spacing: 1.5px;
+}
+
+.map {
+  position: relative;
+  aspect-ratio: 16 / 8;
+  margin-top: 16px;
+  background: #0f0f0f;
+  border: 1px solid var(--hairline);
+  overflow: hidden;
+}
+
+.map iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  /* pull the light tiles into the noir palette */
+  filter: invert(0.92) hue-rotate(180deg) grayscale(0.35) contrast(0.9) brightness(0.9);
+}
+
+.mapButton {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: background 0.2s;
+}
+
+.mapButton:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.mapCross {
+  font-size: 30px;
+  line-height: 1;
+  color: var(--accent-text);
+}
+
+.mapLabel {
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--dim);
+}
+
+.mapsLink {
+  display: inline-block;
+  margin-top: 14px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--fg);
+  border: 1px solid var(--hairline);
+  padding: 10px 14px;
+  transition:
+    border-color 0.15s,
+    color 0.15s;
+}
+
+.mapsLink:hover {
+  border-color: var(--accent-text);
+  color: var(--accent-text);
+}
