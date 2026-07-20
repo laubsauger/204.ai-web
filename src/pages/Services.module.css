@@ -5,8 +5,23 @@
 .title {
   font-size: clamp(44px, 6.9vw, 92px);
   color: var(--fg);
-  margin: 0 0 44px;
-  max-width: 80%;
+  margin: 0;
+}
+
+/* pillar section header — label + rule so sections read as chapters,
+   clearly set off from the page title and from the card display type */
+.pillarHead {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin: 52px 0 14px;
+}
+
+.pillarHead .pillarRule,
+.pillarRule {
+  flex: 1;
+  height: 1px;
+  background: var(--hairline);
 }
 
 .grid {
@@ -62,7 +77,7 @@
 }
 
 .cardLabel {
-  font-size: clamp(32px, 4vw, 56px);
+  font-size: clamp(28px, 3.2vw, 44px);
   color: var(--fg);
   margin: 0 0 20px;
   transition: text-shadow 0.25s;

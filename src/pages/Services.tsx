@@ -14,17 +14,25 @@ export function Services() {
     <div className={styles.root}>
       <div className="t-label" style={{ marginBottom: 8 }}>§ 03 / WHAT WE DO</div>
       <h1 className={`t-display ${styles.title}`}>
-        Two pillars. <span style={{ color: 'var(--dim)' }}>One</span> room.
+        Two pillars.
+        <br />
+        <span style={{ color: 'var(--dim)' }}>One room.</span>
       </h1>
 
-      <div className="t-label" style={{ margin: '0 0 12px' }}>/ .CONTENT — AI-POWERED VISUALS & GENERATIVE STORYTELLING</div>
+      <div className={styles.pillarHead}>
+        <span className="t-label">/ .CONTENT — AI-POWERED VISUALS & GENERATIVE STORYTELLING</span>
+        <span className={styles.pillarRule} />
+      </div>
       <div className={styles.grid}>
         {SERVICES_CONTENT.map((s, i) => (
           <ServiceCard key={s.n} s={s} last={i === SERVICES_CONTENT.length - 1} />
         ))}
       </div>
 
-      <div className="t-label" style={{ margin: '40px 0 12px' }}>/ .INTERACTIVE — INSTALLATIONS, MOTION TRACKING & RESPONSIVE ENVIRONMENTS</div>
+      <div className={styles.pillarHead}>
+        <span className="t-label">/ .INTERACTIVE — INSTALLATIONS, MOTION TRACKING & RESPONSIVE ENVIRONMENTS</span>
+        <span className={styles.pillarRule} />
+      </div>
       <div className={styles.grid}>
         {SERVICES_INTERACTIVE.map((s, i) => (
           <ServiceCard key={s.n} s={s} last={i === SERVICES_INTERACTIVE.length - 1} />
