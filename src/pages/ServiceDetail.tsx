@@ -33,7 +33,8 @@ export function ServiceDetail() {
       </div>
       <h1 className={`t-display ${styles.title}`}>{s.label}</h1>
 
-      {/* copy leads; product loop sits compact beside it on large screens */}
+      {/* media left; selected work in this practice rides beside it,
+          intro + CTA follow underneath */}
       <div className={styles.top}>
         <div className={styles.hero}>
           <MediaStill
@@ -42,13 +43,37 @@ export function ServiceDetail() {
             playing
           />
         </div>
-        <div>
+        <aside>
+          {related.length > 0 ? (
+            <>
+              <div className="t-label" style={{ marginBottom: 4 }}>/ SELECTED WORK IN THIS PRACTICE</div>
+              {related.map((w) => (
+                <Link key={w.id} to={`/work/${w.slug}`} className={styles.relatedRow}>
+                  <span className={`t-mono ${styles.relatedCode}`}>{w.code}</span>
+                  <span className={`t-display ${styles.relatedTitle}`}>{w.title}</span>
+                  <span className={`t-mono ${styles.relatedMeta}`}>{w.year}</span>
+                </Link>
+              ))}
+            </>
+          ) : (
+            <>
+              <p className={`t-serif ${styles.intro}`}>{s.intro ?? s.body}</p>
+              <Link to="/contact" className={`t-mono ${styles.cta}`}>
+                → BRING THIS TO YOUR EVENT
+              </Link>
+            </>
+          )}
+        </aside>
+      </div>
+
+      {related.length > 0 && (
+        <div className={styles.introBlock}>
           <p className={`t-serif ${styles.intro}`}>{s.intro ?? s.body}</p>
           <Link to="/contact" className={`t-mono ${styles.cta}`}>
             → BRING THIS TO YOUR EVENT
           </Link>
         </div>
-      </div>
+      )}
 
       {s.modes && (
         <section className={styles.section}>
@@ -74,19 +99,6 @@ export function ServiceDetail() {
               </div>
             ))}
           </div>
-        </section>
-      )}
-
-      {related.length > 0 && (
-        <section className={styles.section}>
-          <div className="t-label" style={{ marginBottom: 4 }}>/ SELECTED WORK IN THIS PRACTICE</div>
-          {related.map((w) => (
-            <Link key={w.id} to={`/work/${w.slug}`} className={styles.relatedRow}>
-              <span className={`t-mono ${styles.relatedCode}`}>{w.code}</span>
-              <span className={`t-display ${styles.relatedTitle}`}>{w.title}</span>
-              <span className={`t-mono ${styles.relatedMeta}`}>{w.year}</span>
-            </Link>
-          ))}
         </section>
       )}
 
