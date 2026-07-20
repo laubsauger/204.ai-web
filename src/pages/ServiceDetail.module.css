@@ -79,14 +79,13 @@
 .features {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 1px;
-  background: var(--hairline);
+  gap: 10px;
 }
 
 .feature {
   background: var(--bg);
   padding: 18px;
-  outline: 1px solid var(--hairline);
+  border: 1px solid var(--hairline);
 }
 
 .featureLabel {
