@@ -267,6 +267,7 @@ export const LOGO_URL = `${CDN}/65b7a18446d60bb65c1641e7_204white.png`
 // Home hero chapters — featured work with real media, reel order.
 export interface HeroChapter {
   code: string
+  slug: string
   title: string
   client: string
   cat: Category
@@ -276,7 +277,7 @@ export interface HeroChapter {
 
 function chapter(title: string): HeroChapter {
   const w = WORKS.find((x) => x.title === title)!
-  return { code: w.code, title: w.title, client: w.client, cat: w.cat, scene: w.scene, media: w.media }
+  return { code: w.code, slug: w.slug, title: w.title, client: w.client, cat: w.cat, scene: w.scene, media: w.media }
 }
 
 export const HERO_CHAPTERS: HeroChapter[] = [

@@ -51,6 +51,21 @@
   z-index: 2;
 }
 
+.captionLink {
+  display: inline-block;
+  margin-top: 10px;
+  font-size: clamp(9px, 0.7vw, 12px);
+  letter-spacing: 2px;
+  color: var(--accent-text);
+  pointer-events: auto;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.15s;
+}
+
+.captionLink:hover {
+  border-color: var(--accent-text);
+}
+
 .playWrap {
   position: absolute;
   inset: 0;

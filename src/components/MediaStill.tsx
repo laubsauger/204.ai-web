@@ -14,6 +14,8 @@ interface MediaStillProps {
   playing?: boolean
   letterbox?: boolean
   scrim?: boolean
+  /* default true; the hero player disables looping to drive auto-advance */
+  loop?: boolean
   /* exposes the underlying <video> so a host can build player controls */
   videoRef?: (el: HTMLVideoElement | null) => void | (() => void)
 }
@@ -28,7 +30,7 @@ function sized(url: string): string {
 const GRAIN_URL =
   "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.95' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.85'/%3E%3C/svg%3E\")"
 
-export function MediaStill({ scene, media, mini = false, playing = false, letterbox = false, scrim = false, videoRef }: MediaStillProps) {
+export function MediaStill({ scene, media, mini = false, playing = false, letterbox = false, scrim = false, loop = true, videoRef }: MediaStillProps) {
   const reducedMotion = usePrefersReducedMotion()
   const innerVideoRef = useRef<HTMLVideoElement>(null)
   const useVideo = Boolean(media?.video) && playing && !reducedMotion
@@ -60,7 +62,7 @@ export function MediaStill({ scene, media, mini = false, playing = false, letter
           key={media.video.webm}
           ref={mergedVideoRef}
           muted
-          loop
+          loop={loop}
           playsInline
           autoPlay
           onLoadedData={(e) => {
