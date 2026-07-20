@@ -36,7 +36,7 @@ Ship production static site for studio "204 · NO-CONTENT". Implement design/ Di
 id|status|desc|cites
 T1|x|scaffold: vite react-ts, eslint, @fontsource pkgs, folder layout (src/components src/pages src/data src/styles), _redirects+vercel.json, robots.txt|C1,C2,C3,C6,I.build,I.deploy
 T2|x|global styles: CSS reset, :root tokens, font-face imports, type scale helpers (display/mono/serif classes), grain overlay util|C3,C4,V2
-T3|.|data module src/data/studio.ts: STUDIO, WORKS, CATEGORIES, SERVICES, PEOPLE, CONTACT_INFO typed from design/shared.jsx + copy from direction-a.jsx|C9
+T3|x|data module src/data/studio.ts: STUDIO, WORKS, CATEGORIES, SERVICES, PEOPLE, CONTACT_INFO typed from design/shared.jsx + copy from direction-a.jsx|C9
 T4|.|CinematicStill component: 4 SVG scenes (cathedral/desert/interior/water), mini + playing (Ken Burns) modes, grain, letterbox, reduced-motion gate|C9,V7
 T5|.|app shell: router setup, Layout w/ NavA (logo, nav links, booking status), custom cursor (pointer:fine), route head hook for title/meta, 404 page|I.routes,I.seo,V3,V8,V10
 T6|.|Home page: hero player 16:9 + chapter rail, big type strap, intro copy, CTA → /work|C9,C7
