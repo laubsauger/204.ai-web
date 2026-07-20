@@ -35,18 +35,18 @@ export function ServiceDetail() {
 
       {/* copy leads; product loop sits compact beside it on large screens */}
       <div className={styles.top}>
-        <div>
-          <p className={`t-serif ${styles.intro}`}>{s.intro ?? s.body}</p>
-          <Link to="/contact" className={`t-mono ${styles.cta}`}>
-            → BRING THIS TO YOUR EVENT
-          </Link>
-        </div>
         <div className={styles.hero}>
           <MediaStill
             scene={s.scene}
             media={s.still || s.video ? { still: s.still, video: s.video } : undefined}
             playing
           />
+        </div>
+        <div>
+          <p className={`t-serif ${styles.intro}`}>{s.intro ?? s.body}</p>
+          <Link to="/contact" className={`t-mono ${styles.cta}`}>
+            → BRING THIS TO YOUR EVENT
+          </Link>
         </div>
       </div>
 
