@@ -1,9 +1,14 @@
-import { useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { MediaStill } from '../components/MediaStill'
 import { useHead } from '../hooks/useHead'
+import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion'
 import { HERO_CHAPTERS, STUDIO } from '../data/studio'
 import styles from './Home.module.css'
+
+function fmt(s: number) {
+  return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(Math.floor(s % 60)).padStart(2, '0')}`
+}
 
 export function Home() {
   useHead(
@@ -13,12 +18,58 @@ export function Home() {
   const [activeFrame, setActiveFrame] = useState(0)
   const current = HERO_CHAPTERS[activeFrame]
 
+  // hero player state — wired to the <video> inside MediaStill
+  const reducedMotion = usePrefersReducedMotion()
+  const videoEl = useRef<HTMLVideoElement | null>(null)
+  const [isPaused, setIsPaused] = useState(false)
+  const [progress, setProgress] = useState(0)
+  const [timecode, setTimecode] = useState('00:00 / 00:00')
+  const hasPlayer = Boolean(current.media?.video) && !reducedMotion
+
+  const bindVideo = useCallback((el: HTMLVideoElement | null) => {
+    videoEl.current = el
+    if (!el) return
+    setIsPaused(el.paused)
+    setProgress(0)
+    setTimecode('00:00 / 00:00')
+    const onTime = () => {
+      if (el.duration) {
+        setProgress(el.currentTime / el.duration)
+        setTimecode(`${fmt(el.currentTime)} / ${fmt(el.duration)}`)
+      }
+    }
+    const onPlay = () => setIsPaused(false)
+    const onPause = () => setIsPaused(true)
+    el.addEventListener('timeupdate', onTime)
+    el.addEventListener('play', onPlay)
+    el.addEventListener('pause', onPause)
+    return () => {
+      el.removeEventListener('timeupdate', onTime)
+      el.removeEventListener('play', onPlay)
+      el.removeEventListener('pause', onPause)
+    }
+  }, [])
+
+  const togglePlay = () => {
+    const el = videoEl.current
+    if (!el) return
+    if (el.paused) el.play().catch(() => {})
+    else el.pause()
+  }
+
   return (
     <div className={styles.root}>
       {/* hero media — featured work player + chapter rail */}
       <section className={styles.hero} aria-label={`${STUDIO.name} showreel`}>
-        <div className={styles.still}>
-          <MediaStill scene={current.scene} media={current.media} playing letterbox />
+        <div
+          className={styles.still}
+          onClick={hasPlayer ? togglePlay : undefined}
+          onKeyDown={hasPlayer ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); togglePlay() } } : undefined}
+          role={hasPlayer ? 'button' : undefined}
+          tabIndex={hasPlayer ? 0 : undefined}
+          aria-label={hasPlayer ? (isPaused ? 'Play showreel' : 'Pause showreel') : undefined}
+        >
+          <MediaStill scene={current.scene} media={current.media} playing letterbox videoRef={bindVideo} />
           {/* caption overlays */}
           <div className={`t-mono ${styles.captionLeft}`}>
             <div style={{ color: 'var(--accent)' }}>● NOW PLAYING</div>
@@ -31,21 +82,27 @@ export function Home() {
             <div>{current.code}</div>
             <div style={{ opacity: 0.6 }}>204.AI · REAL-TIME</div>
           </div>
-          {/* big play button centered */}
-          <div className={styles.playWrap}>
-            <div className={styles.playRing}>
-              <div className={styles.playTriangle} />
+          {/* play ring — only while paused (or when there's no video to control) */}
+          {(!hasPlayer || isPaused) && (
+            <div className={styles.playWrap}>
+              <div className={styles.playRing}>
+                <div className={styles.playTriangle} />
+              </div>
             </div>
-          </div>
+          )}
           {/* footer bar */}
           <div className={`t-mono ${styles.stillFooter}`}>
-            <span>
-              CH.0{activeFrame + 1} · {current.code}
-            </span>
+            <span>{hasPlayer ? timecode : `CH.0${activeFrame + 1} · ${current.code}`}</span>
             <span style={{ opacity: 0.6 }}>
               REEL · PART {activeFrame + 1} OF {HERO_CHAPTERS.length}
             </span>
           </div>
+          {/* progress bar — sits on the lower letterbox bar */}
+          {hasPlayer && (
+            <div className={styles.progressTrack}>
+              <div className={styles.progressFill} style={{ width: `${progress * 100}%` }} />
+            </div>
+          )}
         </div>
 
         {/* right rail: thumbnail stack */}
