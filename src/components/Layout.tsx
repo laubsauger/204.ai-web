@@ -16,7 +16,7 @@ export function Layout() {
       <div className="grain">
         <Nav />
         <main style={{ paddingTop: 'var(--nav-h)' }}>
-          <div className="shell">
+          <div className="shell page-enter" key={pathname}>
             <Outlet />
           </div>
         </main>

@@ -46,7 +46,15 @@
   font-size: 10px;
   letter-spacing: 2px;
   color: var(--accent-text);
-  transition: opacity 0.2s;
+  transition:
+    opacity 0.2s,
+    transform 0.28s cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .card:hover .cardMore {
+    transform: translateX(5px);
+  }
 }
 
 .cardBg {

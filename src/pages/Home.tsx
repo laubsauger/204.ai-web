@@ -199,10 +199,10 @@ export function Home() {
                   </span>
                   <span className={`t-mono ${styles.chapterCat}`}>{f.cat.toUpperCase()}</span>
                   <span>
-                    <span className={`t-mono ${styles.chapterCode}`} style={{ color: active ? 'var(--accent-text)' : undefined }}>
+                    <span className={`t-mono ${styles.chapterCode}`}>
                       CH.0{i + 1} · {f.code}
                     </span>
-                    <span className={`t-display ${styles.chapterTitle}`} style={{ color: active ? 'var(--fg)' : 'var(--dim)' }}>
+                    <span className={`t-display ${styles.chapterTitle}`}>
                       {f.title}
                     </span>
                     <span className={`t-mono ${styles.chapterClient}`}>{f.client.toUpperCase()}</span>

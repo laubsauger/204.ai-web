@@ -97,6 +97,19 @@
   object-fit: cover;
   border-radius: 2px;
   filter: grayscale(0.35) contrast(1.05);
+  transition: filter 0.3s;
+}
+
+.person {
+  transition: background 0.15s;
+}
+
+.person:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.person:hover .personPhoto {
+  filter: grayscale(0) contrast(1.05);
 }
 
 .personNum {

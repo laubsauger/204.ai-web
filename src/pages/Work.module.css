@@ -30,6 +30,10 @@
   background: transparent;
   color: var(--dim);
   border: 1px solid var(--hairline);
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s;
   font-size: 10px;
   letter-spacing: 1.5px;
   text-transform: uppercase;
@@ -97,6 +101,17 @@
   font-size: clamp(20px, 2.2vw, 30px);
   transition: color 0.12s;
   position: relative;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .cellTitle a {
+    display: inline-block;
+    transition: transform 0.28s cubic-bezier(0.2, 0.7, 0.3, 1);
+  }
+
+  .row:hover .cellTitle a {
+    transform: translateX(6px);
+  }
 }
 
 .row:hover .cellTitle {

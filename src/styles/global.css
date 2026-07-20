@@ -151,3 +151,22 @@ a {
     animation: none;
   }
 }
+
+/* ─── microinteractions ─── */
+@media (prefers-reduced-motion: no-preference) {
+  .page-enter {
+    animation: ncPageIn 0.34s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+  }
+
+  @keyframes ncPageIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
