@@ -6,8 +6,8 @@ import styles from './Contact.module.css'
 const INFO: Array<[string, string, string?]> = [
   ['EMAIL', CONTACT.email, `mailto:${CONTACT.email}`],
   ['STUDIO', CONTACT.studio],
-  ['INSTAGRAM', CONTACT.instagram, 'https://instagram.com/204.nocontent'],
-  ['ARE.NA', CONTACT.arena, 'https://www.are.na/204-nocontent'],
+  ['INSTAGRAM', CONTACT.instagram, CONTACT.instagramUrl],
+  ['LINKEDIN', CONTACT.linkedin, CONTACT.linkedinUrl],
 ]
 
 export function Contact() {

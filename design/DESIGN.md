@@ -48,3 +48,8 @@ Direction A is the chosen direction; Direction B is kept for comparison.
   hairline `rgba(236,236,236,0.14)`, accent `#c9442b` (tweakable).
 - Type: Archivo Black (display), Space Grotesk (body), JetBrains Mono (labels),
   Instrument Serif (accents/quotes).
+
+## Real content scrape (2026-07-20)
+`design/scrape/extracted.json` = text/meta/asset snapshot of the live Webflow site
+(204-no-content.webflow.io, both pillars + subpages). Source of truth for real copy,
+projects, team, contact + hotlinked media in `src/data/studio.ts` (SPEC §C10).

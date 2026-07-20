@@ -12,7 +12,8 @@ Ship production static site for studio "204 · NO-CONTENT". Implement design/ Di
 - C6: deploy target = any static host (CF Pages / Netlify / Vercel). SPA fallback config included.
 - C7: prototype is fixed 1280×820 artboard → production must be responsive. Desktop = design fidelity; ≤768px = adapted layout, no horizontal scroll.
 - C8: contact form client-side only (no backend). Submit → success state, same as prototype. mailto fallback link.
-- C9: content (works, services, people, copy) verbatim from design/shared.jsx + direction-a.jsx. One data module.
+- C9: content (works, services, people, copy) verbatim from design/shared.jsx + direction-a.jsx. One data module. SUPERSEDED by C10 for real content.
+- C10: real content source = 204-no-content.webflow.io scrape (snapshot design/scrape/extracted.json). Copy ADAPTED into Night Shift voice — inform, don't transplant; no invented facts. Design/layout unchanged.
 
 ## §I interfaces
 - I.routes: `/` home, `/work`, `/services`, `/about`, `/contact`, `*` → 404.
@@ -24,7 +25,7 @@ Ship production static site for studio "204 · NO-CONTENT". Implement design/ Di
 - V1: prod bundle contains zero references to unpkg/babel-standalone/react.development. `grep -r "unpkg\|babel" dist/assets` → empty.
 - V2: token values in code match §C4 exactly; defined once in `:root` CSS vars; components reference vars, never re-hardcode hex (exception: SVG scene art inside CinematicStill).
 - V3: all 5 routes deep-linkable: direct URL load renders correct page (SPA fallback).
-- V4: no external network requests at runtime except none — fonts/assets all same-origin.
+- V4: fonts + app code self-hosted, no third-party JS/CSS at runtime. TEMP exception (until redesign approved, then self-host): project media (img/video) may hotlink cdn.prod.website-files.com; youtube embeds allowed on demand-load.
 - V5: `npm run build` exits 0 with zero TS errors. `npm run lint` exits 0.
 - V6: no horizontal overflow at 360px, 768px, 1280px, 1920px viewport widths.
 - V7: rAF/interval animations (CinematicStill, hover preview timecode) gated by `prefers-reduced-motion: reduce` → static frame.
@@ -48,6 +49,10 @@ T9|x|About page: colophon display type, stats, team list, hiring box|C9
 T10|x|Contact page: info grid + brief intake form (name/org/budget chips/three-lines textarea) → client-side sent state|C8,C9
 T11|x|responsive pass: nav collapse, hero stack, type clamp(), work table→cards, grids→1col; verify V6 widths|C7,V6
 T12|x|verify: build+lint clean, V1 grep, route deep-links via preview server, no external requests, README (run/build/deploy)|V1,V3,V4,V5
+T13|x|persist scrape snapshot design/scrape/extracted.json + note in DESIGN.md|C10
+T14|x|real data swap src/data/studio.ts: curated 12 works (both pillars, cat= branded/artistic/mapping/interactive), 8 services (4 content + 4 interactive products), team 5 makers, contact (Hello@204.ai, RnA Studio Lisboa, IG/LinkedIn), stats, hero chapters|C10
+T15|x|brand + media wiring: real 204 logo in nav (hotlink), adapted copy (strap HUMAN FIRST—AI AS TOOL, about= creative tech studio + RnA box replaces hiring box, services intro), real stills/videos in hero chapters + work hover cards, CinematicStill fallback|C10,V4,V12
+T16|x|verify: build+lint, V6 rerun, screenshots desktop+mobile, V1 grep|V1,V5,V6
 
 ## §B bugs
 id|date|cause|fix

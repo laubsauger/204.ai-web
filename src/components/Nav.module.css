@@ -21,13 +21,10 @@
   flex-shrink: 0;
 }
 
-.logoBox {
-  border: 1.5px solid var(--fg);
-  padding: 3px 7px 2px;
-  font-family: var(--font-display);
-  font-size: 18px;
-  letter-spacing: 0.5px;
-  line-height: 1;
+.logoImg {
+  height: 26px;
+  width: auto;
+  display: block;
 }
 
 .logoSuffix {

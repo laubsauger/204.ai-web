@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { CinematicStill } from '../components/CinematicStill'
+import { MediaStill } from '../components/MediaStill'
 import { useCursor } from '../components/Cursor'
 import { useHead } from '../hooks/useHead'
 import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion'
@@ -9,7 +9,7 @@ import styles from './Work.module.css'
 export function Work() {
   useHead(
     'Work — 204 · NO-CONTENT',
-    'Selected work ledger: film, motion, identity and interactive projects by 204 · NO-CONTENT.',
+    'Selected work: interactive installations, immersive mapping, branded and artistic AI film by 204.',
   )
   const [cat, setCat] = useState<CategoryFilter>('all')
   const [hovered, setHovered] = useState<string | null>(null)
@@ -66,7 +66,7 @@ export function Work() {
               {/* row background still — fades L→R, sits behind columns */}
               <div className={styles.rowBg} style={{ opacity: isHover ? 0.82 : 0.32 }}>
                 <div className={styles.rowBgInner} style={{ transform: isHover ? 'scale(1.04)' : 'scale(1)' }}>
-                  <CinematicStill scene={w.scene} mini />
+                  <MediaStill scene={w.scene} media={w.media} mini scrim />
                 </div>
               </div>
 
@@ -140,7 +140,7 @@ function HoverPreview({ w }: { w: WorkItem }) {
   return (
     <div ref={ref} className={styles.preview}>
       <div className={styles.previewStill}>
-        <CinematicStill scene={w.scene} playing />
+        <MediaStill scene={w.scene} media={w.media} playing />
         <div className={`t-mono ${styles.previewBadge}`}>
           <span className={styles.previewPulse} />
           AUTOPLAY

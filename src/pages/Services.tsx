@@ -1,32 +1,40 @@
 import { useState } from 'react'
-import { CinematicStill } from '../components/CinematicStill'
+import { MediaStill } from '../components/MediaStill'
 import { useHead } from '../hooks/useHead'
-import { SERVICES, type Service } from '../data/studio'
+import { SERVICES_CONTENT, SERVICES_INTERACTIVE, type Service } from '../data/studio'
 import styles from './Services.module.css'
 
 export function Services() {
   useHead(
     'Services — 204 · NO-CONTENT',
-    'Direction, motion & film, identity, interaction. Four practices, one room. Rates on request.',
+    'Two pillars: AI-powered content creation (branded work, mapping, film, archival) and interactive formats (Magic Mirror, AI Photo Booth, Live Visuals, Augmented Art).',
   )
 
   return (
     <div className={styles.root}>
       <div className="t-label" style={{ marginBottom: 8 }}>§ 03 / WHAT WE DO</div>
       <h1 className={`t-display ${styles.title}`}>
-        Four practices. <span style={{ color: 'var(--dim)' }}>One</span> room.
+        Two pillars. <span style={{ color: 'var(--dim)' }}>One</span> room.
       </h1>
 
+      <div className="t-label" style={{ margin: '0 0 12px' }}>/ .CONTENT — AI-POWERED VISUALS & GENERATIVE STORYTELLING</div>
       <div className={styles.grid}>
-        {SERVICES.map((s, i) => (
-          <ServiceCard key={s.n} s={s} last={i === SERVICES.length - 1} />
+        {SERVICES_CONTENT.map((s, i) => (
+          <ServiceCard key={s.n} s={s} last={i === SERVICES_CONTENT.length - 1} />
+        ))}
+      </div>
+
+      <div className="t-label" style={{ margin: '40px 0 12px' }}>/ .INTERACTIVE — INSTALLATIONS, MOTION TRACKING & RESPONSIVE ENVIRONMENTS</div>
+      <div className={styles.grid}>
+        {SERVICES_INTERACTIVE.map((s, i) => (
+          <ServiceCard key={s.n} s={s} last={i === SERVICES_INTERACTIVE.length - 1} />
         ))}
       </div>
 
       <div className={`t-mono ${styles.footer}`}>
         <span>RATES ON REQUEST</span>
-        <span>NDA · IF YOU NEED ONE, WE HAVE ONE</span>
-        <span>TAKING BRIEFS Q3 / 26 →</span>
+        <span>EVERY FORMAT STANDS ALONE OR SCALES TO YOUR VENUE</span>
+        <span>TAKING BRIEFS →</span>
       </div>
     </div>
   )
@@ -38,7 +46,7 @@ function ServiceCard({ s, last }: { s: Service; last: boolean }) {
     <div className={styles.card} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
       <div className={styles.cardBg} style={{ opacity: hover ? 0.55 : 0.26 }}>
         <div className={styles.cardBgInner} style={{ transform: hover ? 'scale(1.03)' : 'scale(1)' }}>
-          <CinematicStill scene={s.scene} mini />
+          <MediaStill scene={s.scene} media={s.still ? { still: s.still } : undefined} mini scrim />
         </div>
       </div>
       <div className={styles.cardContent}>

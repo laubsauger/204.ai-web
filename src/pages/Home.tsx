@@ -1,24 +1,24 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CinematicStill } from '../components/CinematicStill'
+import { MediaStill } from '../components/MediaStill'
 import { useHead } from '../hooks/useHead'
 import { HERO_CHAPTERS, STUDIO } from '../data/studio'
 import styles from './Home.module.css'
 
 export function Home() {
   useHead(
-    '204 · NO-CONTENT — Creative studio for image, motion & interaction',
-    '204 · NO-CONTENT is a five-person practice working in film, motion, identity and reading. Based in Lisbon, operating everywhere there’s a signal.',
+    '204 · NO-CONTENT — Creative technology studio',
+    '204 is a creative technology studio at the intersection of AI, motion, identity and live environments. Based at RnA Studio, Lisbon.',
   )
   const [activeFrame, setActiveFrame] = useState(0)
   const current = HERO_CHAPTERS[activeFrame]
 
   return (
     <div className={styles.root}>
-      {/* hero media — single cinematic still + chapter rail */}
+      {/* hero media — featured work player + chapter rail */}
       <section className={styles.hero} aria-label={`${STUDIO.name} showreel`}>
         <div className={styles.still}>
-          <CinematicStill scene={current.scene} />
+          <MediaStill scene={current.scene} media={current.media} playing letterbox />
           {/* caption overlays */}
           <div className={`t-mono ${styles.captionLeft}`}>
             <div style={{ color: 'var(--accent)' }}>● NOW PLAYING</div>
@@ -29,7 +29,7 @@ export function Home() {
           </div>
           <div className={`t-mono ${styles.captionRight}`}>
             <div>{current.code}</div>
-            <div style={{ opacity: 0.6 }}>35MM · 2.39:1</div>
+            <div style={{ opacity: 0.6 }}>204.AI · REAL-TIME</div>
           </div>
           {/* big play button centered */}
           <div className={styles.playWrap}>
@@ -37,11 +37,13 @@ export function Home() {
               <div className={styles.playTriangle} />
             </div>
           </div>
-          {/* footer bar — runtime + reel part */}
+          {/* footer bar */}
           <div className={`t-mono ${styles.stillFooter}`}>
-            <span>01:28 / 04:28</span>
+            <span>
+              CH.0{activeFrame + 1} · {current.code}
+            </span>
             <span style={{ opacity: 0.6 }}>
-              REEL 2025 · PART {activeFrame + 1} OF {HERO_CHAPTERS.length}
+              REEL · PART {activeFrame + 1} OF {HERO_CHAPTERS.length}
             </span>
           </div>
         </div>
@@ -59,7 +61,7 @@ export function Home() {
                   className={`${styles.chapter} ${active ? styles.chapterActive : ''}`}
                 >
                   <span className={styles.thumb}>
-                    <CinematicStill scene={f.scene} mini />
+                    <MediaStill scene={f.scene} media={f.media} mini />
                     {active && <span className={styles.thumbRing} />}
                   </span>
                   <span>
@@ -81,14 +83,14 @@ export function Home() {
       {/* big type strap */}
       <section className={styles.strap}>
         <h1 className={`t-display ${styles.strapType}`}>
-          A STUDIO<span style={{ color: 'var(--dim)' }}>—</span>FOR
+          HUMAN<span style={{ color: 'var(--dim)' }}>—</span>FIRST.
           <br />
-          WORK THAT <span style={{ color: 'var(--accent)' }}>LASTS</span>
+          AI AS <span style={{ color: 'var(--accent)' }}>TOOL</span>
         </h1>
         <div className={styles.strapRow}>
           <p className={`t-mono ${styles.intro}`}>
-            204 · NO-CONTENT is a five-person practice working in film, motion, identity and reading. Based in Lisbon,
-            operating everywhere there's a signal.
+            204 is a creative technology studio working at the intersection of AI, motion, identity and live
+            environments. Based at RnA Studio, Lisbon — operating everywhere there's a signal.
           </p>
           <Link to="/work" className={`t-mono ${styles.cta}`}>
             → Selected Work

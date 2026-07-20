@@ -1,4 +1,5 @@
 import { NavLink, Link } from 'react-router-dom'
+import { LOGO_URL } from '../data/studio'
 import styles from './Nav.module.css'
 
 const ITEMS = [
@@ -13,12 +14,7 @@ export function Nav() {
   return (
     <header className={styles.root}>
       <Link to="/" className={styles.logo} aria-label="204 · NO-CONTENT — home">
-        <span className={styles.logoBox}>204</span>
-        <span className={styles.logoSuffix}>
-          NO-
-          <br />
-          CONTENT
-        </span>
+        <img src={LOGO_URL} alt="204 · NO-CONTENT" className={styles.logoImg} />
       </Link>
 
       <nav className={styles.nav} aria-label="Main">
@@ -35,7 +31,7 @@ export function Nav() {
       </nav>
 
       <Link to="/contact" className={styles.status}>
-        <span className={styles.statusBooking}>● BOOKING Q3 / 26</span>
+        <span className={styles.statusBooking}>● RNA STUDIO · LISBOA</span>
         <span className={styles.statusCta}>WORK WITH US →</span>
       </Link>
     </header>

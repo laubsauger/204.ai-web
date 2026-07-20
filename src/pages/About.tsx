@@ -5,7 +5,7 @@ import styles from './About.module.css'
 export function About() {
   useHead(
     'About — 204 · NO-CONTENT',
-    'Named after HTTP 204 — a response that returns nothing. Five people in Lisbon, working slowly on long projects.',
+    '204 is a creative technology studio led by five makers in Lisbon, working at the intersection of AI, motion, identity and live environments.',
   )
 
   return (
@@ -13,13 +13,14 @@ export function About() {
       <div>
         <div className="t-label" style={{ marginBottom: 8 }}>§ 04 / COLOPHON</div>
         <h1 className={`t-display ${styles.title}`}>
-          We make <span style={{ color: 'var(--accent)' }}>less</span>,
+          We build <span style={{ color: 'var(--accent)' }}>worlds</span>,
           <br />
           <span style={{ color: 'var(--dim)' }}>on purpose.</span>
         </h1>
         <p className={`t-serif ${styles.body}`}>
           Named after HTTP 204 — a response that returns nothing. A joke about studios that deliver exactly that, and a
-          promise that we won't. We work slowly, in small numbers, on long projects.
+          promise that we won't. 204 is a creative technology studio working at the intersection of AI, motion,
+          identity and live environments — translating ideas into responsive worlds.
         </p>
         <div className={styles.stats}>
           {STATS.map(([k, v]) => (
@@ -32,7 +33,7 @@ export function About() {
       </div>
 
       <div className={styles.side}>
-        <div className="t-label" style={{ marginBottom: 16 }}>/ THE ROOM</div>
+        <div className="t-label" style={{ marginBottom: 16 }}>/ THE MAKERS</div>
         {PEOPLE.map((p, i) => (
           <div key={p.name} className={styles.person}>
             <div className={styles.personName}>
@@ -43,12 +44,11 @@ export function About() {
           </div>
         ))}
         <div className={styles.hiring}>
-          <div className={`t-mono ${styles.hiringLabel}`}>/ NOW HIRING</div>
+          <div className={`t-mono ${styles.hiringLabel}`}>/ RNA STUDIO — OUR LAB IN LISBON</div>
           <p className={styles.hiringBody}>
-            Mid-weight motion designer, part-time, Lisbon or remote CET. Films and resumes to{' '}
-            <a href={`mailto:${CONTACT.email}`} style={{ color: 'var(--accent)' }}>
-              {CONTACT.email}
-            </a>
+            A hybrid studio and cultural platform where ideas are developed, tested and exhibited — workshops,
+            installations and collaborative projects. Visit us at {CONTACT.studio.replace('RnA Studio — ', '')}, or
+            write to <a href={`mailto:${CONTACT.email}`} style={{ color: 'var(--accent)' }}>{CONTACT.email}</a>
           </p>
         </div>
       </div>
