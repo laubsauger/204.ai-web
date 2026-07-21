@@ -70,19 +70,19 @@ const routes = [
   },
   ...WORKS.map((w) => ({
     path: `/work/${w.slug}`,
-    title: t(w.title),
+    title: t(`${w.title} · Work`),
     desc: w.note,
     image: w.media?.still,
   })),
   ...SERVICES_ALL.map((s) => ({
     path: `/services/${s.slug}`,
-    title: t(s.label),
+    title: t(`${s.label} · Service`),
     desc: s.body,
     image: s.still,
   })),
   ...PEOPLE.map((p) => ({
     path: `/makers/${p.slug}`,
-    title: t(p.name),
+    title: t(`${p.name} · Maker`),
     desc: `${p.name}, ${p.role} at 204 — creative technology studio, Lisbon.`,
     image: p.photo,
   })),

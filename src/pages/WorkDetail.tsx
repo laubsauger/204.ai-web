@@ -13,7 +13,7 @@ export function WorkDetail() {
   const w = WORKS[idx]
 
   useHead(
-    w ? `${w.title}` : '404',
+    w ? `${w.title} · Work` : '404',
     w ? w.note : 'Project not found.',
     w?.media?.still,
   )
