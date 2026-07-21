@@ -12,8 +12,7 @@
   position: relative;
   margin: 28px 28px 0;
   overflow: hidden;
-  background: #0f0f0f;
-  border-radius: 2px;
+  /* transparent — the column gap must read as page background */
   display: grid;
   grid-template-columns: minmax(0, 1.55fr) minmax(280px, 1fr);
   column-gap: 22px;
@@ -27,6 +26,8 @@
 .still {
   position: relative;
   overflow: hidden;
+  background: #0f0f0f;
+  border-radius: 2px;
 }
 
 /* hovering the player clears the grading to inspect footage — text keeps
