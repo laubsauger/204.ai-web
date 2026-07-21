@@ -4,7 +4,6 @@
   left: 0;
   pointer-events: none;
   z-index: 100;
-  mix-blend-mode: difference;
   transition: opacity 0.15s;
 }
 
@@ -14,6 +13,8 @@
   border-radius: 99px;
   background: var(--fg);
   border: none;
+  /* plain dot inverts against whatever it crosses */
+  mix-blend-mode: difference;
   transition:
     width 0.18s,
     height 0.18s;
@@ -26,19 +27,27 @@
   letter-spacing: 1px;
 }
 
+/* ring/label modes trade the invert blend for a blurred dark chip so the
+   label stays readable over text and bright footage */
 .expanded {
   width: 56px;
   height: 56px;
-  background: transparent;
-  border: 1px solid var(--fg);
+  mix-blend-mode: normal;
+  background: rgba(10, 10, 10, 0.68);
+  border: 1px solid rgba(236, 236, 236, 0.85);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
 }
 
 /* any interactive surface without a label — open ring */
 .ring {
   width: 36px;
   height: 36px;
-  background: transparent;
-  border: 1px solid var(--fg);
+  mix-blend-mode: normal;
+  background: rgba(10, 10, 10, 0.45);
+  border: 1px solid rgba(236, 236, 236, 0.85);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
 
 /* text fields keep the native caret; the dot steps back */

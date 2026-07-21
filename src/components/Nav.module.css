@@ -68,6 +68,10 @@
   color: var(--fg);
 }
 
+.linkIsActive {
+  /* marker class for hover-underline exclusion */
+}
+
 .underline {
   position: absolute;
   left: 14px;
@@ -92,7 +96,8 @@
     transition: transform 0.3s cubic-bezier(0.2, 0.7, 0.3, 1);
   }
 
-  .link:hover::after {
+  /* active item keeps its red bar — no white hover line on top of it */
+  .link:not(.linkIsActive):hover::after {
     transform: scaleX(1);
   }
 

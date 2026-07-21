@@ -21,7 +21,12 @@ export function Nav() {
 
       <nav className={styles.nav} aria-label="Main">
         {ITEMS.map((it) => (
-          <NavLink key={it.to} to={it.to} end={it.to === '/'} className={styles.link}>
+          <NavLink
+            key={it.to}
+            to={it.to}
+            end={it.to === '/'}
+            className={({ isActive }) => `${styles.link} ${isActive ? styles.linkIsActive : ''}`}
+          >
             {({ isActive }) => (
               <>
                 <span className={isActive ? styles.linkActive : styles.linkLabel}>{it.label}</span>

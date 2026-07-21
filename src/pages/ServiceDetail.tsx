@@ -105,11 +105,11 @@ export function ServiceDetail() {
       )}
 
       <nav className={styles.pager} aria-label="More services">
-        <Link to={`/services/${prev.slug}`} className={`${styles.pagerLink} anim-wipe-l`}>
+        <Link to={`/services/${prev.slug}`} state={{ pager: 'prev' }} className={`${styles.pagerLink} anim-wipe-l`}>
           <span className={`t-mono ${styles.pagerLabel}`}>← PREV</span>
           <span className={`t-display ${styles.pagerTitle}`}>{prev.label}</span>
         </Link>
-        <Link to={`/services/${next.slug}`} className={`${styles.pagerLink} ${styles.pagerRight} anim-wipe-r`}>
+        <Link to={`/services/${next.slug}`} state={{ pager: 'next' }} className={`${styles.pagerLink} ${styles.pagerRight} anim-wipe-r`}>
           <span className={`t-mono ${styles.pagerLabel}`}>NEXT →</span>
           <span className={`t-display ${styles.pagerTitle}`}>{next.label}</span>
         </Link>

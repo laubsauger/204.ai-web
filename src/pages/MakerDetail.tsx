@@ -60,11 +60,11 @@ export function MakerDetail() {
       </div>
 
       <nav className={styles.pager} aria-label="More makers">
-        <Link to={`/makers/${prev.slug}`} className={`${styles.pagerLink} anim-wipe-l`}>
+        <Link to={`/makers/${prev.slug}`} state={{ pager: 'prev' }} className={`${styles.pagerLink} anim-wipe-l`}>
           <span className={`t-mono ${styles.pagerLabel}`}>← PREV</span>
           <span className={`t-display ${styles.pagerTitle}`}>{prev.name}</span>
         </Link>
-        <Link to={`/makers/${next.slug}`} className={`${styles.pagerLink} ${styles.pagerRight} anim-wipe-r`}>
+        <Link to={`/makers/${next.slug}`} state={{ pager: 'next' }} className={`${styles.pagerLink} ${styles.pagerRight} anim-wipe-r`}>
           <span className={`t-mono ${styles.pagerLabel}`}>NEXT →</span>
           <span className={`t-display ${styles.pagerTitle}`}>{next.name}</span>
         </Link>

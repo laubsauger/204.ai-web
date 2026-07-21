@@ -5,7 +5,11 @@ import { CursorProvider } from './Cursor'
 import { trackPageView } from '../lib/analytics'
 
 export function Layout() {
-  const { pathname } = useLocation()
+  const { pathname, state } = useLocation()
+  // pager links pass { pager: 'prev' | 'next' } — those get a fast
+  // directional slide instead of the full entrance choreography
+  const pager = (state as { pager?: 'prev' | 'next' } | null)?.pager
+  const enterClass = pager === 'prev' ? 'page-pager-prev' : pager === 'next' ? 'page-pager-next' : 'page-enter'
 
   // Route change: reset scroll (SPA keeps scroll position by default).
   useEffect(() => {
@@ -20,7 +24,7 @@ export function Layout() {
       <div className="grain">
         <Nav />
         <main style={{ paddingTop: 'var(--nav-h)', overflow: 'clip' }}>
-          <div className="shell page-enter" key={pathname}>
+          <div className={`shell ${enterClass}`} key={pathname}>
             <Outlet />
           </div>
         </main>

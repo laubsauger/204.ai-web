@@ -80,11 +80,11 @@ export function WorkDetail() {
 
       {/* prev / next */}
       <nav className={styles.pager} aria-label="More work">
-        <Link to={`/work/${prev.slug}`} className={`${styles.pagerLink} anim-wipe-l`}>
+        <Link to={`/work/${prev.slug}`} state={{ pager: 'prev' }} className={`${styles.pagerLink} anim-wipe-l`}>
           <span className={`t-mono ${styles.pagerLabel}`}>← PREV</span>
           <span className={`t-display ${styles.pagerTitle}`}>{prev.title}</span>
         </Link>
-        <Link to={`/work/${next.slug}`} className={`${styles.pagerLink} ${styles.pagerRight} anim-wipe-r`}>
+        <Link to={`/work/${next.slug}`} state={{ pager: 'next' }} className={`${styles.pagerLink} ${styles.pagerRight} anim-wipe-r`}>
           <span className={`t-mono ${styles.pagerLabel}`}>NEXT →</span>
           <span className={`t-display ${styles.pagerTitle}`}>{next.title}</span>
         </Link>
