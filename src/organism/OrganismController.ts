@@ -53,6 +53,16 @@ export class OrganismController {
     this.deriveCreases()
   }
 
+  /** Settle the creature invisibly before the first rendered frame — no
+      caramel-smear intro (B15). Call after the first resize. */
+  prewarm(steps = 150) {
+    this.beforeFrame(0)
+    for (let i = 0; i < steps; i++) this.simulation.step(this.config.simulation.fixedDelta)
+    this.simulation.writeUniforms(1)
+    this.deriveTorso()
+    this.deriveCreases()
+  }
+
   /** Route change etc. — re-query obstacle elements. */
   rescanObstacles() {
     this.collector.rescan()

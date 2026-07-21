@@ -100,11 +100,14 @@ export class ParticleBuffer {
     this.activation[1] = 1
 
     // serpentine growth (Blender-technique analog: iterative tangent steps
-    // with per-limb seeded curvature — never a straight fan)
-    const baseAngle = rnd() * Math.PI * 2
+    // with per-limb seeded curvature). Spawn DIRECTLY in role pose —
+    // walkers (a<3) hang down, uppers rise — so no on-screen morph (B15)
+    const WALKER_SPREAD = [-0.85, 0, 0.85]
+    const UPPER_SPREAD = [-0.55, 0.55]
+    const DOWN = -Math.PI / 2
+    const UP = Math.PI / 2
     for (let a = 0; a < appendageCount; a++) {
-      const spread = (a / appendageCount) * Math.PI * 2
-      const angle = baseAngle + spread + (rnd() - 0.5) * 1.1
+      const angle = (a < 3 ? DOWN + WALKER_SPREAD[a % 3] : UP + UPPER_SPREAD[(a - 3) % 2]) + (rnd() - 0.5) * 0.3
       const lengthScale = 0.8 + rnd() * 0.7 // limbs differ substantially
       const thickness = 0.55 + rnd() * 0.8
       const serpFreq = 1.8 + rnd() * 1.6

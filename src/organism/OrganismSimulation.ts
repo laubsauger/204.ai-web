@@ -141,6 +141,13 @@ export class OrganismSimulation {
       p.posY[1] += (at.y - p.posY[1]) * Math.min(1, dt * 4)
     }
 
+    // surface probe first — intention + corner-following both need it
+    const sd = this.surfaceDist(p.posX[0], p.posY[0])
+    const inRange = sd < this.maxReach * 1.05
+    const n = this.surfaceNormalInto(p.posX[0], p.posY[0], this.normal)
+    const surfNX = n.x
+    const surfNY = n.y
+
     // core intention: idle orbit around the anchor; when the pointer is
     // present and outside a dead zone, lean toward a point short of it —
     // interested, never cursor-glued (§17/§23)
@@ -163,7 +170,22 @@ export class OrganismSimulation {
     }
     // torso needs real clearance — a pocket tighter than the body is not a
     // destination (reachability-lite; M8 A* replaces this)
-    const rawTarget = this.reachableTowards(p.posX[0], p.posY[0], ix, iy, p.radius[0] * 1.35)
+    let rawTarget = this.reachableTowards(p.posX[0], p.posY[0], ix, iy, p.radius[0] * 1.35)
+    // corner following (until M8 A*): if the straight ray is blocked but the
+    // desire is far, walk along the wall tangent toward it — the creature
+    // rounds corners instead of idling at them
+    const desireDist = Math.hypot(ix - p.posX[0], iy - p.posY[0])
+    const progress = Math.hypot(rawTarget.x - p.posX[0], rawTarget.y - p.posY[0])
+    if (desireDist > 0.12 && progress < 0.03 && inRange) {
+      const sign = -surfNY * (ix - p.posX[0]) + surfNX * (iy - p.posY[0]) >= 0 ? 1 : -1
+      rawTarget = this.reachableTowards(
+        p.posX[0],
+        p.posY[0],
+        p.posX[0] - surfNY * sign * 0.22,
+        p.posY[0] + surfNX * sign * 0.22,
+        p.radius[0] * 1.2,
+      )
+    }
     // ease the effective target: losing line of sight must not snap the
     // destination (user 2026-07-21) — the body drifts, never jerks
     const tk = 1 - Math.exp((-dt / 0.55) * Math.LN2)
@@ -192,13 +214,6 @@ export class OrganismSimulation {
     }
 
     // ---- surface rest + planting (walking substrate — §20/§22) ----
-    // the creature belongs ON surfaces: body hovers at limb height above
-    // the nearest floor/wall/obstacle edge, 2-3 aligned limbs plant tips
-    const sd = this.surfaceDist(p.posX[0], p.posY[0])
-    const inRange = sd < this.maxReach * 1.05
-    const n = this.surfaceNormalInto(p.posX[0], p.posY[0], this.normal)
-    const surfNX = n.x
-    const surfNY = n.y
     {
       // carry height breathes slowly, crouches while moving; spring is
       // ALWAYS on (clamped) — detached bodies sink to the nearest surface

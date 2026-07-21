@@ -74,6 +74,7 @@ export async function mountOrganism(
     controller.resize({ width: w, height: h })
   }
   applySize()
+  controller.prewarm()
   const resizeObserver = new ResizeObserver(applySize)
   resizeObserver.observe(container)
 
