@@ -77,7 +77,7 @@ export function MediaStill({ scene, media, mini = false, playing = false, letter
         <video
           /* key forces a fresh element per source — <source> swaps alone
              don't make the browser load the new file */
-          key={media.video.webm}
+          key={media.video.mp4}
           ref={mergedVideoRef}
           muted
           loop={loop}
@@ -90,7 +90,6 @@ export function MediaStill({ scene, media, mini = false, playing = false, letter
           style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
         >
           <source src={media.video.mp4} type="video/mp4" />
-          <source src={media.video.webm} type="video/webm" />
         </video>
       ) : null}
 

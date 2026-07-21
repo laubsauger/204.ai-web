@@ -15,4 +15,8 @@ npm-debug.log*
 .DS_Store
 *.local
 .lh/
-.env*media-src/
+.env*
+
+# media pipeline originals cache + firebase deploy cache
+media-src/
+.firebase/

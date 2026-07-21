@@ -30,7 +30,7 @@ Ship production static site for studio "204 · NO-CONTENT". Implement design/ Di
 - V1: prod bundle contains zero references to unpkg/babel-standalone/react.development. `grep -r "unpkg\|babel" dist/assets` → empty.
 - V2: token values in code match §C4 exactly; defined once in `:root` CSS vars; components reference vars, never re-hardcode hex (exception: SVG scene art inside CinematicStill).
 - V3: all 5 routes deep-linkable: direct URL load renders correct page (SPA fallback).
-- V4: fonts + app code + media ALL self-hosted, no third-party runtime requests except: GA4 gtag.js (G-E2HCBBXBVP, explicit request) & click-to-load youtube + OSM tiles. `grep -r "website-files" src content index.html scripts dist` → empty (design/ scrape snapshot exempt, read-only ref).
+- V4: fonts + app code + media ALL self-hosted, no third-party runtime requests except: GA4 gtag.js (G-E2HCBBXBVP, explicit request) & click-to-load youtube + OSM tiles. `grep -rl "website-files" src content index.html scripts dist` → only scripts/media-pipeline.mjs (migration tool scan regex; design/ scrape snapshot also exempt, read-only ref).
 - V5: `npm run build` exits 0 with zero TS errors. `npm run lint` exits 0.
 - V6: no horizontal overflow at 360px, 768px, 1280px, 1920px viewport widths.
 - V7: rAF/interval animations (CinematicStill, hover preview timecode) gated by `prefers-reduced-motion: reduce` → static frame.
@@ -71,7 +71,7 @@ T21|x|service detail pages /services/:slug: cards click through (READ MORE affor
 T20|x|work detail pages /work/:slug: ledger rows click through; hero media, meta grid, longform copy (scraped where available), click-to-load youtube (RUBr/Venom), photo gallery (Hulaween/1N), prev/next nav, unknown slug → 404|I.routes,C10,V4,V10
 T24|x|Firebase bootstrap (interactive w/ user): firebase login, projects:create studio204-web + display name, verify Blaze billing link, firebase.json + .firebaserc, local `firebase deploy --only hosting` smoke → studio204-web.web.app live|C13,I.firebase
 T25|x|media pipeline scripts/media-pipeline.mjs: url scan → fetch → media-src/ → sharp (webp full+800, jpg -p-800 og) + ffmpeg (mp4 1080p CRF, drop webm) → public/media/ + manifest; report per-file before/after sizes|C12,I.media,V15
-T26|.|ref rewrite: content/*.json media urls → /media/..., logo (index.html + useHead + generate-meta), -p-800 helpers → local paths (src/lib/media.ts, useHead.ts, generate-meta.mjs), drop cdn preconnect/dns-prefetch, video entries mp4-only|C12,V4
+T26|x|ref rewrite: content/*.json media urls → /media/..., logo (index.html + useHead + generate-meta), -p-800 helpers → local paths (src/lib/media.ts, useHead.ts, generate-meta.mjs), drop cdn preconnect/dns-prefetch, video entries mp4-only|C12,V4
 T27|.|firebase.json headers: /media/** + /assets/** immutable 1y, html no-cache; SPA rewrite; verify w/ curl -I on deployed site|I.firebase,V14
 T28|.|CI: add Firebase deploy job (action-hosting-deploy, service acct secret) alongside GH Pages job; Firebase build base=/ SITE_URL=studio204-web.web.app, canonical/sitemap → Firebase|C13,I.firebase,V16
 T29|.|verify sprint: build+lint, V4 grep empty, V6 rerun, player-probe, V15 size audit, curl header check both hosts, both deploys green|V4,V5,V6,V14,V15,V16
@@ -82,5 +82,6 @@ B1|2026-07-20|work hover preview absolute w/o viewport clamp → clipped bottom 
 B2|2026-07-20|nav status lines not optically flush right (block/text-align)|flex column + flex-end, cosmetic
 B3|2026-07-20|t-display tracking -0.02em (prototype = -0.02px ≈ none) + fixed 1280-design px caps → tiny type + dead space on large/hidpi screens|V12 + fluid clamps
 B4|2026-07-20|home not composed to viewport: fixed-height hero + oversized strap pushed CTA below fold on FHD; fixed-width chapter thumbs forced rail taller than hero (last item clipped); nav divider floating|hero flex-fills 100dvh-composed root, strap 6.2vw, thumbs derive width from row height, status divider stretched
+B7|2026-07-21|player-probe.mjs selector `button[class*=chapter]` vs actual `<div role="button">` markup → probe crashed on chapter-switch step, hero verification silently unusable (pre-existing, surfaced by T29 rerun)|selector → `[role="button"][class*=chapter]`
 B6|2026-07-21|long-form video (Yards reel 2.4min) 36.5MB @ 1080p/CRF23 tripped orig 15MB cap; user: quality > squeeze|V15 relaxed → video ≤ 40MB; ladder (1080p23→720p26→720p28→540p30) only if > 38MB
 B5|2026-07-20|hero player state frozen at 0: inline ref arrow on <video> changed identity every render → React 19 ran ref cleanup + re-invoked host bindVideo, resetting progress/timecode state on each timeupdate render; also <source> swaps don't reload video (chapter switch kept old footage) and webm transcodes report Infinity duration|memoized merged ref, key video by src, mp4-first sources

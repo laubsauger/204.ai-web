@@ -2,7 +2,7 @@
   {
     "name": "Dimitri De Jonghe",
     "role": "Creative Technologist & Founder",
-    "photo": "https://cdn.prod.website-files.com/64ba5b3b418a540ade9f6e31/6744aa085bf15599e815f40d_Dimi_Makers.png",
+    "photo": "/media/dimi-makers.webp",
     "socials": {
       "instagram": "https://www.instagram.com/dimitridejonghe/",
       "linkedin": "https://www.linkedin.com/in/dimitridejonghe/",
@@ -12,7 +12,7 @@
   {
     "name": "Cintia Aguiar Pinto",
     "role": "Creative Director & Founder",
-    "photo": "https://cdn.prod.website-files.com/64ba5b3b418a540ade9f6e31/6744aaf77e86a28002b33175_Cintia_Makers.png",
+    "photo": "/media/cintia-makers.webp",
     "socials": {
       "instagram": "https://www.instagram.com/cintiaaguiarp/",
       "linkedin": "https://www.linkedin.com/in/cintiaaguiarp/",
@@ -22,7 +22,7 @@
   {
     "name": "Cecilia Hübinette",
     "role": "Art Director & Co-Founder",
-    "photo": "https://cdn.prod.website-files.com/64ba5b3b418a540ade9f6e31/6744aaff7714a7f2459a01a9_Cece_Makers.png",
+    "photo": "/media/cece-makers.webp",
     "socials": {
       "instagram": "https://www.instagram.com/cecehubs/",
       "linkedin": "https://www.linkedin.com/in/cecilia-hubinette-4734291a2/"
@@ -31,7 +31,7 @@
   {
     "name": "Dan Brown",
     "role": "AI Arts Director & Artist",
-    "photo": "https://cdn.prod.website-files.com/64ba5b3b418a540ade9f6e31/6744ab08106d7329c3649e60_dan_makers.png",
+    "photo": "/media/dan-makers.webp",
     "socials": {
       "instagram": "https://www.instagram.com/204nocontent.ai/",
       "web": "https://204.ai"
@@ -40,7 +40,7 @@
   {
     "name": "Laura Coimbra",
     "role": "Marketing",
-    "photo": "https://cdn.prod.website-files.com/64ba5b3b418a540ade9f6e31/67991aab309a340fa28cef39_Laure_themakers.png",
+    "photo": "/media/laure-themakers.webp",
     "socials": {
       "instagram": "https://www.instagram.com/laurasgcoimbra/",
       "linkedin": "https://www.linkedin.com/in/laurasgcoimbra/"

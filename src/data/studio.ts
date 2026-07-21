@@ -8,10 +8,21 @@
 // NOTE: slugify/code derivation is mirrored in scripts/generate-meta.mjs —
 // keep both in sync.
 
-import worksJson from '../../content/works.json' with { type: 'json' }
-import servicesJson from '../../content/services.json' with { type: 'json' }
-import peopleJson from '../../content/people.json' with { type: 'json' }
-import studioJson from '../../content/studio.json' with { type: 'json' }
+import worksRaw from '../../content/works.json' with { type: 'json' }
+import servicesRaw from '../../content/services.json' with { type: 'json' }
+import peopleRaw from '../../content/people.json' with { type: 'json' }
+import studioRaw from '../../content/studio.json' with { type: 'json' }
+
+// content JSON stores media as site-root paths (/media/...); prefix Vite's
+// base once here so the GH Pages subpath build keeps working (SPEC V16)
+const BASE = import.meta.env.BASE_URL
+const rebase = <T,>(json: T): T =>
+  BASE === '/' ? json : (JSON.parse(JSON.stringify(json).replaceAll('"/media/', `"${BASE}media/`)) as T)
+
+const worksJson = rebase(worksRaw)
+const servicesJson = rebase(servicesRaw)
+const peopleJson = rebase(peopleRaw)
+const studioJson = rebase(studioRaw)
 
 export type Scene = 'cathedral' | 'desert' | 'interior' | 'water'
 
@@ -19,7 +30,7 @@ export type Category = 'branded' | 'artistic' | 'mapping' | 'interactive'
 
 export interface WorkMedia {
   still?: string
-  video?: { webm: string; mp4: string }
+  video?: { mp4: string }
 }
 
 interface RawWork {
@@ -51,7 +62,7 @@ interface RawService {
   scene: Scene
   body: string
   still?: string
-  video?: { webm: string; mp4: string }
+  video?: { mp4: string }
   intro?: string
   modes?: Array<{ n: string; label: string; body: string }>
   features?: Array<{ label: string; body: string }>

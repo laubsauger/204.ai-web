@@ -1,18 +1,14 @@
 import { useEffect } from 'react'
 
-const OG_DEFAULT_IMAGE =
-  'https://cdn.prod.website-files.com/64ba5b3b418a540ade9f6e31/65b7a18446d60bb65c1641e7_204white.png'
+const OG_DEFAULT_IMAGE = `${import.meta.env.BASE_URL}media/204white-p-800.jpg`
 
 /* WhatsApp-safe og:image — mirror of scripts/generate-meta.mjs ogImage():
-   use the -p-800 rendition for path-style CDN URLs (full-res can exceed
-   WhatsApp's ~600KB preview cap); %2F posters + never-resized small
-   sources stay as-is. Keep both in sync. */
-const NO_RENDITION = ['67489265485a73607410fa99_winesfromanother.png']
+   scrapers reject webp and drop images over ~600KB, so serve the pipeline's
+   -p-800 jpg rendition, absolutized. Keep both in sync. */
 function ogImage(img?: string): string | undefined {
-  if (img && img.startsWith('data:')) return undefined // inline placeholders can't be share cards
-  if (!img || img.includes('%2F')) return img
-  if (NO_RENDITION.some((f) => img.includes(f))) return img
-  return img.replace(/(\.(?:png|jpe?g|webp))$/i, '-p-800$1')
+  if (!img || img.startsWith('data:')) return undefined // inline placeholders can't be share cards
+  const jpg = img.replace(/\.(?:png|jpe?g|webp|avif)$/i, '-p-800.jpg')
+  return new URL(jpg, window.location.origin).href
 }
 
 function setMeta(attr: 'name' | 'property', key: string, content: string) {
@@ -41,12 +37,13 @@ export function useHead(pageTitle: string, description: string, rawImage?: strin
     setMeta('name', 'description', description)
     setMeta('property', 'og:title', title)
     setMeta('property', 'og:description', description)
-    setMeta('property', 'og:image', image ?? OG_DEFAULT_IMAGE)
+    const img = image ?? new URL(OG_DEFAULT_IMAGE, window.location.origin).href
+    setMeta('property', 'og:image', img)
     setMeta('property', 'og:url', window.location.href)
     setMeta('property', 'og:type', 'website')
     setMeta('name', 'twitter:card', 'summary_large_image')
     setMeta('name', 'twitter:title', title)
     setMeta('name', 'twitter:description', description)
-    setMeta('name', 'twitter:image', image ?? OG_DEFAULT_IMAGE)
+    setMeta('name', 'twitter:image', img)
   }, [title, description, image])
 }

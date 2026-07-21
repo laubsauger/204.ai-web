@@ -18,7 +18,7 @@ import { basename, extname, join } from 'node:path'
 const ROOT = new URL('..', import.meta.url).pathname
 const SRC_DIR = join(ROOT, 'media-src')
 const OUT_DIR = join(ROOT, 'public', 'media')
-const MANIFEST = join(ROOT, 'scripts', 'media-manifest.json')
+const MANIFEST = join(SRC_DIR, 'media-manifest.json')
 
 const RASTER = /\.(png|jpe?g|webp|avif|gif)$/i
 const VIDEO = /\.(mp4|webm|mov)$/i

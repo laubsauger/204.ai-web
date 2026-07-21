@@ -39,14 +39,14 @@ console.log('click→resume:', JSON.stringify(await state()))
 
 // switch Synesthesia (video) → Yard Episode (video) directly
 const yard = await pg.evaluateHandle(() =>
-  [...document.querySelectorAll('button[class*=chapter]')].find((c) => /yard/i.test(c.textContent)),
+  [...document.querySelectorAll('[role="button"][class*=chapter]')].find((c) => /yard/i.test(c.textContent)),
 )
 await yard.asElement().click()
 await new Promise((r) => setTimeout(r, 3000))
 console.log('switch→yard:', JSON.stringify(await state()))
 
 const syn = await pg.evaluateHandle(() =>
-  [...document.querySelectorAll('button[class*=chapter]')].find((c) => /synesthesia/i.test(c.textContent)),
+  [...document.querySelectorAll('[role="button"][class*=chapter]')].find((c) => /synesthesia/i.test(c.textContent)),
 )
 await syn.asElement().click()
 await new Promise((r) => setTimeout(r, 3000))

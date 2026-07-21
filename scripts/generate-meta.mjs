@@ -35,25 +35,26 @@ const heroWork = WORKS.find((w) => w.slug === studioJson.heroChapters[0])
 const dist = join(root, 'dist')
 // e.g. https://laubsauger.github.io/204.ai-web — no trailing slash
 const SITE_URL = (process.env.SITE_URL ?? '').replace(/\/$/, '')
+// deploy base path, mirrors vite.config.ts (SPEC V16 dual deploy)
+const BASE = process.env.VITE_BASE ?? '/'
+// site-root /media/... path → base-prefixed relative URL (for preloads)
+const assetUrl = (p) => (p && p.startsWith('/media/') ? BASE + p.slice(1) : p)
+// …→ absolute URL for share cards (SITE_URL already carries the base path)
+const absUrl = (p) => (p && p.startsWith('/') && SITE_URL ? SITE_URL + p : p)
 
 /* title rule mirrors src/hooks/useHead.ts — bare page names in, brand out */
 const BRAND = '204 · NO-CONTENT'
 const HOME_TITLE = `${BRAND} — Creative technology studio`
 const t = (page) => (page ? `${page} — ${BRAND}` : HOME_TITLE)
 
-const DEFAULT_IMAGE =
-  'https://cdn.prod.website-files.com/64ba5b3b418a540ade9f6e31/65b7a18446d60bb65c1641e7_204white.png'
+const DEFAULT_IMAGE = '/media/204white-p-800.jpg'
 
-/* WhatsApp drops og:images over ~600KB — serve the -p-800 rendition instead
-   of full-res (Discord/Telegram don't care, but WhatsApp silently blanks).
-   %2F-style poster URLs have no renditions (small jpgs, fine as-is), and
-   small sources never got renditions from Webflow — list those here. */
-const NO_RENDITION = ['67489265485a73607410fa99_winesfromanother.png']
+/* WhatsApp drops og:images over ~600KB and scrapers reject webp — serve the
+   pipeline's -p-800 jpg rendition (mirror of src/hooks/useHead.ts ogImage,
+   keep both in sync). */
 function ogImage(u) {
-  if (u && u.startsWith('data:')) return undefined // inline placeholders can't be share cards
-  if (!u || u.includes('%2F')) return u
-  if (NO_RENDITION.some((f) => u.includes(f))) return u
-  return u.replace(/(\.(?:png|jpe?g|webp))$/i, '-p-800$1')
+  if (!u || u.startsWith('data:')) return undefined // inline placeholders can't be share cards
+  return u.replace(/\.(?:png|jpe?g|webp|avif)$/i, '-p-800.jpg')
 }
 
 /** @type {Array<{path: string, title: string, desc: string, image?: string}>} */
@@ -136,7 +137,7 @@ if (cssLink) {
 }
 
 function metaFor(r) {
-  const image = r.image ?? DEFAULT_IMAGE
+  const image = absUrl(r.image ?? DEFAULT_IMAGE)
   const url = SITE_URL ? `${SITE_URL}${r.path}` : ''
   return (
     `<title>${esc(r.title)}</title>\n` +
@@ -152,7 +153,7 @@ function metaFor(r) {
     `    <meta name="twitter:image" content="${esc(image)}" />` +
     // LCP: hero media downloads in parallel with the JS bundle instead of
     // being discovered after React mounts
-    (r.preload ? `\n    <link rel="preload" as="image" href="${esc(r.preload)}" fetchpriority="high" />` : '')
+    (r.preload ? `\n    <link rel="preload" as="image" href="${esc(assetUrl(r.preload))}" fetchpriority="high" />` : '')
   )
 }
 
@@ -194,27 +195,21 @@ console.log(`generate-meta: ${count} routes${SITE_URL ? ' + sitemap.xml' : ' (no
 
 /* WhatsApp drops og:images over ~600KB. Gate every unique image at build
    time so new content can't silently ship a preview that blanks there.
-   Network hiccups only warn; a confirmed oversize image fails the build. */
+   Images are self-hosted now — stat the dist file directly; a missing
+   rendition or oversize image fails the build. */
+import { statSync } from 'node:fs'
 const OG_IMAGE_LIMIT = 600 * 1024
 const unique = [...new Set(routes.map((r) => r.image ?? DEFAULT_IMAGE))]
-const results = await Promise.allSettled(
-  unique.map(async (u) => {
-    const res = await fetch(u, { method: 'HEAD' })
-    return { u, ok: res.ok, size: Number(res.headers.get('content-length')) || 0 }
-  }),
-)
 let failed = false
-for (const r of results) {
-  if (r.status === 'rejected') {
-    console.warn(`generate-meta: WARN could not size-check og:image (${r.reason})`)
-    continue
-  }
-  const { u, ok, size } = r.value
-  if (!ok) {
-    console.error(`generate-meta: FAIL og:image not reachable: ${u}`)
-    failed = true
-  } else if (size > OG_IMAGE_LIMIT) {
-    console.error(`generate-meta: FAIL og:image ${Math.round(size / 1024)}KB > 600KB (WhatsApp drops it): ${u}`)
+for (const u of unique) {
+  try {
+    const size = statSync(join(dist, u.replace(/^\//, ''))).size
+    if (size > OG_IMAGE_LIMIT) {
+      console.error(`generate-meta: FAIL og:image ${Math.round(size / 1024)}KB > 600KB (WhatsApp drops it): ${u}`)
+      failed = true
+    }
+  } catch {
+    console.error(`generate-meta: FAIL og:image missing from dist: ${u}`)
     failed = true
   }
 }

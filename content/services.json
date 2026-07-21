@@ -38,10 +38,9 @@
       "label": "Magic Mirror",
       "scene": "cathedral",
       "body": "Real-time AI mirror installation. Touch prompting, custom-trained styles, custom frames — controlled from the Mirror app.",
-      "still": "https://cdn.prod.website-files.com/64ba5b3b418a540ade9f6e31%2F69b3e6a6a71e70fdb9bb5fa9_magic-livingpainting_poster.0000000.jpg",
+      "still": "/media/magic-livingpainting-poster.webp",
       "video": {
-        "webm": "https://cdn.prod.website-files.com/64ba5b3b418a540ade9f6e31%2F69b3e6a6a71e70fdb9bb5fa9_magic-livingpainting_webm.webm",
-        "mp4": "https://cdn.prod.website-files.com/64ba5b3b418a540ade9f6e31%2F69b3e6a6a71e70fdb9bb5fa9_magic-livingpainting_mp4.mp4"
+        "mp4": "/media/magic-livingpainting.mp4"
       },
       "intro": "One system, multiple experiences: a real-time interactive mirror that transforms your audience and places them at the center of the experience.",
       "modes": [
@@ -96,10 +95,9 @@
       "label": "AI Photo Booth",
       "scene": "interior",
       "body": "Generative photo booth for events — branded, styled, instantly shareable.",
-      "still": "https://cdn.prod.website-files.com/64ba5b3b418a540ade9f6e31%2F69b3e614ee5d9448d002cbb6_photobooth_poster.0000000.jpg",
+      "still": "/media/photobooth-poster.webp",
       "video": {
-        "webm": "https://cdn.prod.website-files.com/64ba5b3b418a540ade9f6e31%2F69b3e614ee5d9448d002cbb6_photobooth_webm.webm",
-        "mp4": "https://cdn.prod.website-files.com/64ba5b3b418a540ade9f6e31%2F69b3e614ee5d9448d002cbb6_photobooth_mp4.mp4"
+        "mp4": "/media/photobooth.mp4"
       },
       "intro": "Instant transformations, branded take-home moments: a real-time AI portrait experience that turns guests into custom identities — built for festivals, brand activations, conferences and cultural events.",
       "modes": [
@@ -149,10 +147,9 @@
       "label": "Live Visuals",
       "scene": "water",
       "body": "AI-driven VJing and live visuals for stages, performances and immersive spaces.",
-      "still": "https://cdn.prod.website-files.com/64ba5b3b418a540ade9f6e31%2F69b3e5faece24832f8313ed4_livevisualsss_poster.0000000.jpg",
+      "still": "/media/livevisualsss-poster.webp",
       "video": {
-        "webm": "https://cdn.prod.website-files.com/64ba5b3b418a540ade9f6e31%2F69b3e5faece24832f8313ed4_livevisualsss_webm.webm",
-        "mp4": "https://cdn.prod.website-files.com/64ba5b3b418a540ade9f6e31%2F69b3e5faece24832f8313ed4_livevisualsss_mp4.mp4"
+        "mp4": "/media/livevisualsss.mp4"
       },
       "intro": "Real-time worlds at architectural scale: stages, buildings, landscapes and performers become responsive visual environments — from intimate venues to cliffs and full facades.",
       "modes": [
@@ -179,10 +176,9 @@
       "label": "Augmented Art",
       "scene": "desert",
       "body": "Living paintings and augmented artworks for museums, galleries and artist collaborations.",
-      "still": "https://cdn.prod.website-files.com/64ba5b3b418a540ade9f6e31%2F69b3e7021f89aaf243863571_Augmented%202_poster.0000000.jpg",
+      "still": "/media/augmented-2-poster.webp",
       "video": {
-        "webm": "https://cdn.prod.website-files.com/64ba5b3b418a540ade9f6e31%2F69b3e7021f89aaf243863571_Augmented%202_webm.webm",
-        "mp4": "https://cdn.prod.website-files.com/64ba5b3b418a540ade9f6e31%2F69b3e7021f89aaf243863571_Augmented%202_mp4.mp4"
+        "mp4": "/media/augmented-2.mp4"
       },
       "intro": "Added motion, added story, added depth: physical artworks brought to life through real-time generative layers — extending narrative and atmosphere without altering the original piece.",
       "modes": [
