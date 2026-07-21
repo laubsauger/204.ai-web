@@ -73,6 +73,15 @@ export class OrganismSimulation {
   private sniffing = false
   private lastPointerDist = Infinity
   private lastProgressTime = 0
+  /* discrete locomotion decisions (user 2026-07-21: self-propelled, no
+     rubber band) — the body commits to a local destination and walks it */
+  private localSet = false
+  private localStaleAt = 0
+  private decisionGoalX = 1e9
+  private decisionGoalY = 1e9
+  private lastDecisionAt = -10
+  private pauseUntil = -1
+  private rng = mulberry32(4211)
 
   /* state machine (M9) */
   state: 'rest' | 'pursue' | 'settle' | 'sniff' | 'jump' = 'rest'
@@ -497,39 +506,67 @@ export class OrganismSimulation {
       }
     }
 
-    /* intention smoothing + shell projection (no flight) */
-    const tk = 1 - Math.exp((-dt / 0.55) * Math.LN2)
-    this.intentX += (ix - this.intentX) * tk
-    this.intentY += (iy - this.intentY) * tk
+    /* DISCRETE destination commitment — no continuous cursor servo.
+       The body picks a local destination ~1 body-length ahead along the
+       route, walks it at its own rhythm, micro-pauses, then re-decides.
+       Cursor motion affects DECISIONS, never in-flight travel. */
     const shellBand = this.maxReach * 0.34
-    const tsd = this.surfaceDist(this.intentX, this.intentY)
-    if (tsd > shellBand) {
-      this.surfaceNormalInto(this.intentX, this.intentY, this.normal2)
-      const pullIn = tsd - shellBand
-      this.intentX -= this.normal2.x * pullIn
-      this.intentY -= this.normal2.y * pullIn
-    }
-    // carrot around corners (user 2026-07-21): if shell projection collapsed
-    // the intent next to the body while the goal is still far, slide it
-    // along the surface tangent toward the goal and re-project — the body
-    // WALKS around the bend instead of stalling against it
-    {
-      const iDist = Math.hypot(this.intentX - p.posX[0], this.intentY - p.posY[0])
-      const gDist = Math.hypot(ix - p.posX[0], iy - p.posY[0])
-      if (iDist < 0.08 && gDist > 0.15) {
-        this.surfaceNormalInto(this.intentX, this.intentY, this.normal2)
-        const tgX = -this.normal2.y
-        const tgY = this.normal2.x
-        const sgn = tgX * (ix - this.intentX) + tgY * (iy - this.intentY) >= 0 ? 1 : -1
-        this.intentX += tgX * sgn * 0.12
-        this.intentY += tgY * sgn * 0.12
-        const tsd2 = this.surfaceDist(this.intentX, this.intentY)
-        if (tsd2 > shellBand) {
-          this.surfaceNormalInto(this.intentX, this.intentY, this.normal2)
-          this.intentX -= this.normal2.x * (tsd2 - shellBand)
-          this.intentY -= this.normal2.y * (tsd2 - shellBand)
+    const decide = () => {
+      // accumulate ~0.28 along the remaining route; fallback = goal
+      let cx = p.posX[0]
+      let cy = p.posY[0]
+      let acc = 0
+      let px2 = ix
+      let py2 = iy
+      if (this.route) {
+        for (let k = this.routeIdx; k < this.route.points.length; k++) {
+          const wp = this.route.points[k]
+          acc += Math.hypot(wp.x - cx, wp.y - cy)
+          cx = wp.x
+          cy = wp.y
+          if (acc >= 0.28) {
+            px2 = wp.x
+            py2 = wp.y
+            break
+          }
+          px2 = wp.x
+          py2 = wp.y
         }
       }
+      // shell projection at DECISION time (walk destinations live on walls);
+      // corner slide if it collapsed next to the body
+      let dest = { x: px2, y: py2 }
+      const dsd = this.surfaceDist(dest.x, dest.y)
+      if (dsd > shellBand) dest = this.projectToSurface(dest.x, dest.y, shellBand * 0.8)
+      if (Math.hypot(dest.x - p.posX[0], dest.y - p.posY[0]) < 0.08 && Math.hypot(ix - p.posX[0], iy - p.posY[0]) > 0.15) {
+        this.surfaceNormalInto(dest.x, dest.y, this.normal2)
+        const tgX = -this.normal2.y
+        const tgY = this.normal2.x
+        const sgn = tgX * (ix - dest.x) + tgY * (iy - dest.y) >= 0 ? 1 : -1
+        dest = this.projectToSurface(dest.x + tgX * sgn * 0.14, dest.y + tgY * sgn * 0.14, shellBand * 0.8)
+      }
+      this.intentX = dest.x
+      this.intentY = dest.y
+      this.localSet = true
+      this.localStaleAt = this.time + 4
+      this.decisionGoalX = ix
+      this.decisionGoalY = iy
+      this.lastDecisionAt = this.time
+      this.pauseUntil = -1
+    }
+    if (this.state === 'pursue') {
+      const reached = Math.hypot(this.intentX - p.posX[0], this.intentY - p.posY[0]) < 0.06
+      const goalJumped = Math.hypot(ix - this.decisionGoalX, iy - this.decisionGoalY) > 0.35 && this.time - this.lastDecisionAt > 0.5
+      if (!this.localSet || this.time > this.localStaleAt || goalJumped) decide()
+      else if (reached) {
+        if (this.pauseUntil < 0) this.pauseUntil = this.time + 0.15 + this.rng() * 0.3 // deliberate beat
+        else if (this.time > this.pauseUntil) decide()
+      }
+    } else if (this.state === 'rest' || this.state === 'settle' || this.state === 'sniff') {
+      // parked: the carrot sits where the body is — nothing tugs
+      this.localSet = false
+      this.intentX = p.posX[0]
+      this.intentY = p.posY[0]
     }
     const tdx = this.intentX - p.posX[0]
     const tdy = this.intentY - p.posY[0]
