@@ -47,10 +47,21 @@ export interface Service {
   relatedCat?: Category
 }
 
+export interface PersonSocials {
+  instagram?: string
+  linkedin?: string
+  web?: string
+  email?: string
+}
+
 export interface Person {
   name: string
   role: string
+  slug: string
   photo?: string
+  bio?: string
+  /* only the links that are set get rendered */
+  socials?: PersonSocials
 }
 
 export const STUDIO = {
@@ -236,13 +247,39 @@ export const SERVICES_INTERACTIVE: Service[] = [
 
 export const SERVICES_ALL: Service[] = [...SERVICES_CONTENT, ...SERVICES_INTERACTIVE]
 
+// Socials: real handles from the live site where scraped; the rest are
+// PLACEHOLDERS (studio accounts) so every maker shows the link set — swap in
+// personal links as they come.
 export const PEOPLE: Person[] = [
-  { name: 'Dimitri De Jonghe', role: 'Creative Technologist & Founder', photo: `${CDN}/6744aa085bf15599e815f40d_Dimi_Makers.png` },
-  { name: 'Cintia Aguiar Pinto', role: 'Creative Director & Founder', photo: `${CDN}/6744aaf77e86a28002b33175_Cintia_Makers.png` },
-  { name: 'Cecilia Hübinette', role: 'Art Director & Co-Founder', photo: `${CDN}/6744aaff7714a7f2459a01a9_Cece_Makers.png` },
-  { name: 'Dan Brown', role: 'AI Arts Director & Artist', photo: `${CDN}/6744ab08106d7329c3649e60_dan_makers.png` },
-  { name: 'Laura Coimbra', role: 'Marketing', photo: `${CDN}/67991aab309a340fa28cef39_Laure_themakers.png` },
-  { name: 'Florian Hinze', role: 'Creative Engineer' },
+  {
+    name: 'Dimitri De Jonghe', role: 'Creative Technologist & Founder', slug: 'dimitri-de-jonghe',
+    photo: `${CDN}/6744aa085bf15599e815f40d_Dimi_Makers.png`,
+    socials: { instagram: 'https://www.instagram.com/dimitridejonghe/', linkedin: 'https://www.linkedin.com/in/dimitridejonghe/', email: 'Hello@204.ai' },
+  },
+  {
+    name: 'Cintia Aguiar Pinto', role: 'Creative Director & Founder', slug: 'cintia-aguiar-pinto',
+    photo: `${CDN}/6744aaf77e86a28002b33175_Cintia_Makers.png`,
+    socials: { instagram: 'https://www.instagram.com/cintiaaguiarp/', linkedin: 'https://www.linkedin.com/in/cintiaaguiarp/', email: 'Hello@204.ai' },
+  },
+  {
+    name: 'Cecilia Hübinette', role: 'Art Director & Co-Founder', slug: 'cecilia-hubinette',
+    photo: `${CDN}/6744aaff7714a7f2459a01a9_Cece_Makers.png`,
+    socials: { instagram: 'https://www.instagram.com/cecehubs/', linkedin: 'https://www.linkedin.com/in/cecilia-hubinette-4734291a2/' },
+  },
+  {
+    name: 'Dan Brown', role: 'AI Arts Director & Artist', slug: 'dan-brown',
+    photo: `${CDN}/6744ab08106d7329c3649e60_dan_makers.png`,
+    socials: { instagram: 'https://www.instagram.com/204nocontent.ai/', web: 'https://204.ai' },
+  },
+  {
+    name: 'Laura Coimbra', role: 'Marketing', slug: 'laura-coimbra',
+    photo: `${CDN}/67991aab309a340fa28cef39_Laure_themakers.png`,
+    socials: { instagram: 'https://www.instagram.com/laurasgcoimbra/', linkedin: 'https://www.linkedin.com/in/laurasgcoimbra/' },
+  },
+  {
+    name: 'Florian Hinze', role: 'Creative Engineer', slug: 'florian-hinze',
+    socials: { linkedin: 'https://www.linkedin.com/company/204-no-content/', web: 'https://204.ai', email: 'Hello@204.ai' },
+  },
 ]
 
 // Worldbuilding in practice — from the live About page.

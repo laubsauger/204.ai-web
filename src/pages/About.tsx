@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useHead } from '../hooks/useHead'
 import { CONTACT, PEOPLE, PRACTICE, STATS } from '../data/studio'
 import styles from './About.module.css'
@@ -47,14 +48,14 @@ export function About() {
       <div className={styles.side}>
         <div className="t-label" style={{ marginBottom: 16 }}>/ THE MAKERS</div>
         {PEOPLE.map((p, i) => (
-          <div key={p.name} className={styles.person}>
+          <Link key={p.name} to={`/makers/${p.slug}`} className={styles.person}>
             <div className={styles.personName}>
               <span className={`t-mono ${styles.personNum}`}>{String(i + 1).padStart(2, '0')}</span>
               {p.photo && <img src={p.photo} alt={p.name} className={styles.personPhoto} loading="lazy" decoding="async" />}
               <span className={`t-serif ${styles.personLabel}`}>{p.name}</span>
             </div>
             <span className={`t-mono ${styles.personRole}`}>{p.role}</span>
-          </div>
+          </Link>
         ))}
         <div className={styles.hiring}>
           <div className={`t-mono ${styles.hiringLabel}`}>/ RNA STUDIO — OUR LAB IN LISBON</div>

@@ -29,22 +29,10 @@
   overflow: hidden;
 }
 
-/* hovering the player clears the grading + captions to inspect footage */
-.still :global(.media-scrims),
-.captionLeft,
-.captionRight,
-.stillFooter {
-  transition: opacity 0.35s;
-}
-
+/* hovering the player clears the grading to inspect footage — text keeps
+   its text-shadow and stays fully readable */
 .still:hover :global(.media-scrims) {
   opacity: 0;
-}
-
-.still:hover .captionLeft,
-.still:hover .captionRight,
-.still:hover .stillFooter {
-  opacity: 0.2;
 }
 
 .captionLeft {
@@ -56,6 +44,7 @@
   letter-spacing: 2px;
   line-height: 1.5;
   z-index: 2;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.8);
 }
 
 .captionRight {
@@ -68,6 +57,7 @@
   text-align: right;
   line-height: 1.5;
   z-index: 2;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.8);
 }
 
 .captionLink {
@@ -344,6 +334,12 @@
 @media (max-width: 660px) {
   .strapType {
     font-size: clamp(26px, 8.4vw, 48px);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .strapRow {
+    animation: ncRiseIn 0.55s cubic-bezier(0.2, 0.7, 0.3, 1) 0.18s both;
   }
 }
 

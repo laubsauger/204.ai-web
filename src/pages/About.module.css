@@ -108,6 +108,14 @@
   background: rgba(255, 255, 255, 0.02);
 }
 
+.person:hover .personLabel {
+  color: var(--accent-text);
+}
+
+.personLabel {
+  transition: color 0.18s;
+}
+
 .person:hover .personPhoto {
   filter: grayscale(0) contrast(1.05);
 }
