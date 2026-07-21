@@ -53,7 +53,7 @@ export const defaultOrganismConfig: OrganismConfig = {
     color: 0xffffff,
     opacity: 0.96,
     edgeSoftnessPx: 1.25,
-    internalShadingStrength: 0.18,
+    internalShadingStrength: 0.26,
   },
   simulation: {
     fixedDelta: 1 / 60,

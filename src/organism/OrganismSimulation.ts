@@ -373,8 +373,10 @@ export class OrganismSimulation {
 
     /* core Verlet (the only dynamic particle) */
     {
-      const vx = (p.posX[0] - p.prevX[0]) * cfg.simulation.damping
-      const vy = (p.posY[0] - p.prevY[0]) * cfg.simulation.damping
+      const restful = this.state === 'rest' || this.state === 'settle' || this.state === 'sniff'
+      const damp = restful ? 0.9 : cfg.simulation.damping
+      const vx = (p.posX[0] - p.prevX[0]) * damp
+      const vy = (p.posY[0] - p.prevY[0]) * damp
       p.prevX[0] = p.posX[0]
       p.prevY[0] = p.posY[0]
       p.posX[0] += vx
@@ -413,7 +415,7 @@ export class OrganismSimulation {
     const sd = this.surfaceDist(p.posX[0], p.posY[0])
     const inRange = sd < this.maxReach * 1.05
     const nRaw = this.surfaceNormalInto(p.posX[0], p.posY[0], this.normal)
-    const nk = Math.min(1, dt * 2.5)
+    const nk = Math.min(1, dt * (this.state === 'rest' ? 0.5 : 2.5)) // frozen frame at rest — no hover-direction sway
     this.smNX += (nRaw.x - this.smNX) * nk
     this.smNY += (nRaw.y - this.smNY) * nk
     const nl = Math.hypot(this.smNX, this.smNY) || 1
@@ -517,7 +519,7 @@ export class OrganismSimulation {
     if (this.state !== 'jump') {
       const goalIsNew = Math.hypot(ix - this.failedGoalX, iy - this.failedGoalY) > 0.15
       if (this.sniffing && this.state !== 'sniff') this.setState('sniff')
-      else if (this.state === 'rest' && goalDist > 0.3 && inState > 1.5 && goalIsNew) this.setState('pursue')
+      else if (this.state === 'rest' && goalDist > 0.4 && inState > 1.5 && goalIsNew) this.setState('pursue')
       else if (this.state === 'pursue' && goalDist < 0.14 && inState > 1) this.setState('settle')
       else if (this.state === 'pursue' && inState > 1 && this.time - this.pursueBestAt > 2.5) {
         // remember the failed goal — no lurching retry loop (§18 hysteresis)
@@ -582,9 +584,12 @@ export class OrganismSimulation {
     const upAngle = Math.atan2(surfNY, surfNX)
     const WALKER_SPREAD = [-0.9, 0, 0.9]
     const UPPER_SPREAD = [-0.6, 0, 0.6]
+    const yearnEarly = this.pointerActive && (pointerDirX !== 0 || pointerDirY !== 0)
+    const pointerAngle = Math.atan2(pointerDirY, pointerDirX)
     for (let a = 0; a < p.appendageCount; a++) {
       const d = this.drivers[a]
-      const want = inRange ? (a < LEGS ? downAngle + WALKER_SPREAD[a % 3] : upAngle + UPPER_SPREAD[(a - LEGS) % 3]) : d.restAngle
+      const seekerWant = yearnEarly ? pointerAngle + UPPER_SPREAD[(a - LEGS) % 3] * 0.55 : upAngle + UPPER_SPREAD[(a - LEGS) % 3]
+      const want = inRange ? (a < LEGS ? downAngle + WALKER_SPREAD[a % 3] : seekerWant) : d.restAngle
       let delta = want - d.restAngle
       while (delta > Math.PI) delta -= Math.PI * 2
       while (delta < -Math.PI) delta += Math.PI * 2
@@ -820,7 +825,7 @@ export class OrganismSimulation {
     const calm = S === 'rest' || S === 'settle' || S === 'sniff' ? 0.45 : 1
     // yearn: pointer present but the body holds short — seekers strain
     // toward it (the seething sniff-poke feel, user 2026-07-21)
-    const yearn = this.pointerActive && goalDist > 0.18
+    const yearn = this.pointerActive && goalDist > 0.12
     const jdx0 = this.jumpEX - this.jumpSX
     const jdy0 = this.jumpEY - this.jumpSY
     const jl0 = Math.hypot(jdx0, jdy0) || 1
@@ -906,7 +911,9 @@ export class OrganismSimulation {
         this.seekX[a] += (gx - this.seekX[a]) * sk
         this.seekY[a] += (gy - this.seekY[a]) * sk
         const snakeCalm = this.sniffing || yearn ? 1 : calm
-        const snake = Math.sin(this.time * (0.16 + (a - LEGS) * 0.05) * Math.PI * 2 + d.curlPhase) * this.chainLen[a] * 0.24 * snakeCalm
+        const extFrac = Math.min(1, ext / this.chainLen[a])
+        const tension = Math.max(0.12, 1.15 - extFrac) // taut at full strain
+        const snake = Math.sin(this.time * (0.16 + (a - LEGS) * 0.05) * Math.PI * 2 + d.curlPhase) * this.chainLen[a] * 0.24 * snakeCalm * tension
         this.solveLimb(a, rootX, rootY, this.seekX[a], this.seekY[a], snake)
       }
     }
@@ -919,7 +926,7 @@ export class OrganismSimulation {
       const tipI = p.indexOf(a, p.jointsPerAppendage - 1)
       const span = Math.hypot(p.posX[tipI] - p.posX[rootI], p.posY[tipI] - p.posY[rootI])
       const ratio = span / (this.chainLen[a] * 0.85)
-      const squash = Math.max(-0.25, Math.min(0.45, 1 - ratio))
+      const squash = Math.max(-0.45, Math.min(0.45, 1 - ratio))
       const planted = a < LEGS && this.plants[a].active
       for (let j = 0; j < p.jointsPerAppendage; j++) {
         const i = p.indexOf(a, j)

@@ -170,7 +170,7 @@ export function buildOutputNodes(opts: {
 
   /* faint interior depth (§35): brightness dips toward thick cores —
      edges stay crisp white, mass becomes legible without 3D shading */
-  const depth = smoothstep(0, R * 1.3, distance.negate()).mul(opts.internalShadingStrength)
+  const depth = smoothstep(0, R * 0.6, distance.negate()).mul(opts.internalShadingStrength)
   const bodyColor = vec3(float(1).sub(depth))
 
   if (!opts.includeDebug) {
