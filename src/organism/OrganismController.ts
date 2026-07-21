@@ -114,7 +114,7 @@ export class OrganismController {
         this.simulation.obstacles,
         this.simulation.obstacleRounding,
         aspect,
-        this.particles.radius[0] * 1.2,
+        this.particles.radius[0] * 1.05,
         this.config.obstacles.comfortClearance,
       )
       this.simulation.invalidateRoute()

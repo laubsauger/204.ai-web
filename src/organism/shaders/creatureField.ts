@@ -132,7 +132,7 @@ export function buildOutputNodes(opts: {
      enter a protected region */
   const edgeD = min(min(simPos.x, opts.aspect.sub(simPos.x)), min(simPos.y, float(1).sub(simPos.y)))
   const boundaryD = min(sdfS.x, edgeD)
-  const distance = smaxN(rawDistance, boundaryD.negate(), R * 0.35)
+  const distance = smaxN(rawDistance, boundaryD.negate(), R * 0.22)
 
   /* analytic AA: edge width from derivatives, floored at edgeSoftness px
      converted to sim units (1 sim unit = viewport height in px) (§16) */

@@ -77,7 +77,7 @@ export const defaultOrganismConfig: OrganismConfig = {
     fieldWidth: 256,
     hardClearance: 0.02,
     /* dense layout — a fat comfort band leaves the creature nowhere to be */
-    comfortClearance: 0.025,
+    comfortClearance: 0.015,
   },
   navigation: {
     gridWidth: 64,

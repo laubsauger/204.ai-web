@@ -157,8 +157,8 @@ export class OrganismSimulation {
     // core intention: idle orbit around the anchor; when the pointer is
     // present and outside a dead zone, lean toward a point short of it —
     // interested, never cursor-glued (§17/§23)
-    let ix = this.anchorX + Math.sin(this.time * 0.05 + 1.7) * 0.04 + Math.sin(this.time * 0.023) * 0.025
-    let iy = this.anchorY + Math.cos(this.time * 0.041 + 0.4) * 0.032 + Math.sin(this.time * 0.017 + 2.1) * 0.022
+    let ix = this.anchorX
+    let iy = this.anchorY
     let pointerDirX = 0
     let pointerDirY = 0
     if (this.pointerActive) {
@@ -181,7 +181,13 @@ export class OrganismSimulation {
     // animate the body directly
     this.sniffing = false
     if (this.nav) {
-      const stale = !this.route || Math.hypot(ix - this.routeGoalX, iy - this.routeGoalY) > this.config.navigation.rerouteThreshold || this.time - this.lastRouteTime > 2.5
+      const pts0 = this.route?.points ?? []
+      const exhaustedFar = this.route !== null && this.routeIdx >= pts0.length && Math.hypot(ix - p.posX[0], iy - p.posY[0]) > 0.12
+      const stale =
+        !this.route ||
+        Math.hypot(ix - this.routeGoalX, iy - this.routeGoalY) > Math.max(this.config.navigation.rerouteThreshold, 0.15) ||
+        exhaustedFar ||
+        this.time - this.lastRouteTime > 6
       if (stale) {
         this.route = this.nav.route(p.posX[0], p.posY[0], ix, iy, this.hasLOS)
         this.routeGoalX = ix
@@ -201,13 +207,18 @@ export class OrganismSimulation {
         if (Math.hypot(end.x - p.posX[0], end.y - p.posY[0]) < 0.16) this.sniffing = true
       }
     }
+    if (Math.hypot(ix - p.posX[0], iy - p.posY[0]) < 0.1) {
+      ix += Math.sin(this.time * 0.05 + 1.7) * 0.03 + Math.sin(this.time * 0.023) * 0.02
+      iy += Math.cos(this.time * 0.041 + 0.4) * 0.025 + Math.sin(this.time * 0.017 + 2.1) * 0.018
+    }
     let rawTarget = this.reachableTowards(p.posX[0], p.posY[0], ix, iy, p.radius[0] * 1.35)
     // corner following (until M8 A*): if the straight ray is blocked but the
     // desire is far, walk along the wall tangent toward it — the creature
     // rounds corners instead of idling at them
     const desireDist = Math.hypot(ix - p.posX[0], iy - p.posY[0])
     const progress = Math.hypot(rawTarget.x - p.posX[0], rawTarget.y - p.posY[0])
-    if (desireDist > 0.12 && progress < 0.03 && inRange) {
+    const routeActive = this.route !== null && this.routeIdx < (this.route.points.length ?? 0)
+    if (desireDist > 0.12 && progress < 0.03 && inRange && !routeActive) {
       const sign = -surfNY * (ix - p.posX[0]) + surfNX * (iy - p.posY[0]) >= 0 ? 1 : -1
       rawTarget = this.reachableTowards(
         p.posX[0],
