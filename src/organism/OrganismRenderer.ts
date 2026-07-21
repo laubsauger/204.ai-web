@@ -19,6 +19,8 @@ export class OrganismRenderer {
   readonly viewportHeightPx = uniform(1000)
   /* 0 final · 1 mask · 2 sdf · 3 field · 4 skeleton (dev only) */
   readonly debugView = uniform(0)
+  /* (x, y, radius, intensity) — nearest-tip proximity glow */
+  readonly glow = uniform(new THREE.Vector4(0, 0, 0.07, 0))
   readonly fieldUniforms: CreatureFieldUniforms
 
   constructor(
@@ -67,6 +69,7 @@ export class OrganismRenderer {
       edgeSoftnessPx: config.appearance.edgeSoftnessPx,
       internalShadingStrength: config.appearance.internalShadingStrength,
       includeDebug: import.meta.env.DEV,
+      glow: this.glow,
     })
 
     this.material = new THREE.MeshBasicNodeMaterial({ transparent: true, depthTest: false, depthWrite: false })

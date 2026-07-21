@@ -85,6 +85,7 @@ export class OrganismSimulation {
   private nextGestureAt = 3
   private gestureUntil = -1
   private gestureLimb = -1
+  private creepAt = 5
 
   /* state machine (M9) */
   state: 'rest' | 'pursue' | 'settle' | 'sniff' | 'jump' = 'rest'
@@ -117,6 +118,12 @@ export class OrganismSimulation {
   /* seekers: eased targets */
   private seekX: Float32Array
   private seekY: Float32Array
+
+  /* proximity glow (user 2026-07-21): nearest tip heats toward the brand
+     accent as it approaches the cursor's touch radius */
+  glowX = 0
+  glowY = 0
+  glowI = 0
 
   dbgReleases = 0
   dbgMoving = false
@@ -611,8 +618,12 @@ export class OrganismSimulation {
     const inState = this.time - this.stateSince
     if (this.state !== 'jump') {
       const goalIsNew = Math.hypot(ix - this.failedGoalX, iy - this.failedGoalY) > 0.15
+      // creep: resting near the cursor, occasionally take one small,
+      // deliberate step closer — circling in (user 2026-07-21)
+      const creep = this.state === 'rest' && this.pointerActive && goalDist > 0.15 && goalDist < 0.35 && this.time > this.creepAt && inState > 2
+      if (creep) this.creepAt = this.time + 5 + this.rng() * 5
       if (this.sniffing && this.state !== 'sniff') this.setState('sniff')
-      else if (this.state === 'rest' && goalDist > 0.22 && inState > 1.5 && goalIsNew) this.setState('pursue')
+      else if (this.state === 'rest' && ((goalDist > 0.22 && inState > 1.5 && goalIsNew) || creep)) this.setState('pursue')
       else if (this.state === 'pursue' && goalDist < 0.14 && inState > 1) this.setState('settle')
       else if (this.state === 'pursue' && inState > 1 && this.time - this.pursueBestAt > 2.5) {
         // remember the failed goal — no lurching retry loop (§18 hysteresis)
@@ -983,9 +994,19 @@ export class OrganismSimulation {
         let desX: number
         let desY: number
         if ((this.sniffing || yearn) && this.pointerActive) {
-          // strain toward the LIVE pointer — alive, wanting
-          desX = this.pointerX
-          desY = this.pointerY
+          // investigate from all sides: each seeker aims at its own slowly
+          // orbiting point on a ring AROUND the cursor — poking, curving
+          // behind it, sniffing it from all sides (user 2026-07-21)
+          const near = Math.hypot(this.pointerX - p.posX[0], this.pointerY - p.posY[0]) < 0.45
+          if (near) {
+            const ang = a * 2.1 + this.time * 0.11 * Math.PI * 2 * (a % 2 === 0 ? 1 : -1)
+            const rr = 0.05 + 0.025 * Math.sin(this.time * 0.07 * Math.PI * 2 + a * 1.4)
+            desX = this.pointerX + Math.cos(ang) * rr
+            desY = this.pointerY + Math.sin(ang) * rr
+          } else {
+            desX = this.pointerX
+            desY = this.pointerY
+          }
         } else if (this.pointerActive && (pointerDirX !== 0 || pointerDirY !== 0)) {
           desX = this.slowPX
           desY = this.slowPY
@@ -1039,6 +1060,32 @@ export class OrganismSimulation {
         const pad = planted && t > 0.55 ? 1 + (t - 0.55) * 0.7 : 1
         p.activation[i] = (1 + Math.sin(this.breathePhase2 + a * 1.3) * 0.04) * (1 + squash * 0.5 * profile) * pad
       }
+    }
+
+    /* proximity glow: nearest tip to the pointer, intensity by closeness
+       (starts ~0.22 out, saturates at the 0.05 touch radius) */
+    {
+      let gi = 0
+      let gx = this.glowX
+      let gy = this.glowY
+      if (this.pointerActive) {
+        let best = Infinity
+        for (let a = 0; a < p.appendageCount; a++) {
+          const tipI = p.indexOf(a, p.jointsPerAppendage - 1)
+          const dd = Math.hypot(p.posX[tipI] - this.pointerX, p.posY[tipI] - this.pointerY)
+          if (dd < best) {
+            best = dd
+            gx = p.posX[tipI]
+            gy = p.posY[tipI]
+          }
+        }
+        const t = Math.max(0, Math.min(1, (0.22 - best) / (0.22 - 0.05)))
+        gi = Math.pow(t, 1.6)
+      }
+      const gk = 1 - Math.exp((-dt / 0.08) * Math.LN2)
+      this.glowX += (gx - this.glowX) * gk
+      this.glowY += (gy - this.glowY) * gk
+      this.glowI += (gi - this.glowI) * gk
     }
 
     /* core velocity for motion stretch */

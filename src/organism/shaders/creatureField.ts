@@ -148,6 +148,7 @@ export function buildOutputNodes(opts: {
   edgeSoftnessPx: number
   internalShadingStrength: number
   includeDebug: boolean
+  glow: Node
 }) {
   const { distance: rawDistance, uvNode, simPos, viewportHeightPx, debugView } = opts
   const R = opts.torsoRadius
@@ -168,13 +169,33 @@ export function buildOutputNodes(opts: {
   const w = max(distance.fwidth(), edgeSim)
   const coverage = float(1).sub(smoothstep(w.negate(), w, distance))
 
-  /* faint interior depth (§35): brightness dips toward thick cores —
-     edges stay crisp white, mass becomes legible without 3D shading */
+  /* interior structure (§35): depth tone toward thick cores + slow
+     organic mottling in creature space — a living interior, not a flat
+     white-gray fill */
   const depth = smoothstep(0, R * 0.4, distance.negate()).mul(opts.internalShadingStrength)
-  const bodyColor = vec3(float(1).sub(depth))
+  const m1 = simPos.x.mul(34).add(time.mul(0.05)).sin()
+  const m2 = simPos.y.mul(29).sub(time.mul(0.037)).sin()
+  const mottle = m1.mul(m2).mul(0.5).add(0.5).mul(opts.internalShadingStrength).mul(0.45)
+  const insideDeep = smoothstep(0, R * 0.5, distance.negate())
+  const shaded = vec3(float(1).sub(depth).sub(mottle.mul(insideDeep)))
+  /* proximity glow: ONLY the nearest tip heats toward the accent
+     (#c9442b) as it nears the cursor's touch radius — localized want */
+  const ACCENT: Node = vec3(0.788, 0.267, 0.169)
+  // NOTE: smoothstep with reversed edges is undefined in WGSL — invert
+  const gd = simPos.sub(opts.glow.xy).length()
+  const glowF = float(1).sub(smoothstep(0, opts.glow.z, gd)).mul(opts.glow.w).clamp(0, 0.85)
+  // aura: soft accent haze AROUND the tip, outside the silhouette too —
+  // an 8px tentacle tip can't carry a glow on its own
+  const haze = float(1).sub(smoothstep(0, opts.glow.z.mul(1.6), gd)).mul(opts.glow.w)
+  const accentW = glowF.add(haze.mul(float(1).sub(coverage))).clamp(0, 0.9)
+  // glow core brightens toward hot orange-white at the very center
+  const hot = float(1).sub(smoothstep(0, opts.glow.z.mul(0.35), gd)).mul(opts.glow.w).mul(0.5)
+  const glowColor = ACCENT.add(vec3(hot))
+  const bodyColor = shaded.mul(float(1).sub(accentW)).add(glowColor.mul(accentW))
+  const opacityWithHaze = coverage.mul(opts.opacity).add(haze.mul(haze).mul(0.4)).clamp(0, 1)
 
   if (!opts.includeDebug) {
-    return { colorNode: bodyColor, opacityNode: coverage.mul(opts.opacity) }
+    return { colorNode: bodyColor, opacityNode: opacityWithHaze }
   }
 
   const maskS = texture(opts.maskTex, uvNode)
@@ -224,7 +245,7 @@ export function buildOutputNodes(opts: {
     )
   const opacityNode = dv
     .equal(0)
-    .select(coverage.mul(opts.opacity), dv.equal(5).select(outlineHit.add(coverage.mul(0.12)), float(1)))
+    .select(opacityWithHaze, dv.equal(5).select(outlineHit.add(coverage.mul(0.12)), float(1)))
 
   return { colorNode, opacityNode }
 }
