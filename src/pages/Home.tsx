@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { MediaStill } from '../components/MediaStill'
 import { useHead } from '../hooks/useHead'
 import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion'
-import { HERO_CHAPTERS, STUDIO, WORKS } from '../data/studio'
+import { HERO_CHAPTERS, STUDIO } from '../data/studio'
 import styles from './Home.module.css'
 
 function fmt(s: number) {
@@ -243,7 +243,7 @@ export function Home() {
             environments. Based at RnA Studio, Lisbon — operating everywhere there's a signal.
           </p>
           <Link to="/work" className={`t-mono ${styles.cta}`}>
-            OPEN THE LEDGER <span className={styles.ctaCount}>· {WORKS.length}</span>
+            EXPLORE OUR WORK
             <span className={styles.ctaArrow}>→</span>
           </Link>
         </div>

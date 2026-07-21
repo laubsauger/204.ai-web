@@ -15,7 +15,7 @@ export function Layout() {
     <CursorProvider>
       <div className="grain">
         <Nav />
-        <main style={{ paddingTop: 'var(--nav-h)' }}>
+        <main style={{ paddingTop: 'var(--nav-h)', overflow: 'clip' }}>
           <div className="shell page-enter" key={pathname}>
             <Outlet />
           </div>
