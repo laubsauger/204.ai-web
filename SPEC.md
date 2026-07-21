@@ -16,6 +16,7 @@ Ship production static site for studio "204 · NO-CONTENT". Implement design/ Di
 - C11: content lives in content/*.json (works/services/people/studio) — code carries no copy. src/data/studio.ts = typed schema + derivations (ids, NC codes, slugs, stats, hero chapters, categories); scripts/generate-meta.mjs reads the same JSON for share meta + sitemap. CMS later = point it at content/.
 - C10: real content source = 204-no-content.webflow.io scrape (snapshot design/scrape/extracted.json). Copy ADAPTED into Night Shift voice — inform, don't transplant; no invented facts. Design/layout unchanged.
 - C12: media self-hosted in repo `public/media/`, committed plain git (no LFS). One-time pipeline `scripts/media-pipeline.mjs` (sharp + ffmpeg, local-only, ⊥ in CI deploy path): imgs → webp site renditions (full ≤1920w + `-p-800`) & jpg `-p-800` for og/share; video → single H.264 mp4 (1080p cap, CRF web-tuned), webm dropped (B5: Infinity duration). Originals cached `media-src/` (gitignored).
+- C14: organism bg (liquid WebGPU creature): three/webgpu + TSL, three version PINNED exact. WebGPU-ONLY — no WebGL fallback (user call 2026-07-21); `navigator.gpu` absent → feature fully disabled, site renders as today. Lazy chunk, loaded post-idle, ⊥ in entry bundle. Fixed bg layer in Layout: z 0, pointer-events none; content z 1. Obstacles = opt-in `data-organism-obstacle` elements only. First pass = pure-white silhouette (fill #fff, opacity 0.96, edge AA via fwidth), no bloom/glow/shading. Sim = fixed timestep PBD skeleton (core+attention+5 appendages×6 joints ≈32 particles); obstacle SDF via jump-flood compute; A* nav grid 64×36 on demand.
 - C13: Firebase project `studio204-web` (display "204 · NO-CONTENT"), Blaze billing. Hosting = primary deploy → https://studio204-web.web.app, base `/`, canonical. GH Pages stays live secondary until custom domain cutover. Both deploy jobs in same workflow, both ! green.
 
 ## §I interfaces
@@ -24,6 +25,7 @@ Ship production static site for studio "204 · NO-CONTENT". Implement design/ Di
 - I.deploy: `dist/` output. SPA rewrite: `public/_redirects` (`/* /index.html 200`) + `vercel.json` rewrite.
 - I.seo: per-route `<title>` + meta description via route head hook. `index.html` base meta + og tags. `robots.txt`.
 - I.firebase: `firebase.json` (hosting: public=dist, SPA rewrite → /index.html, per-path Cache-Control headers), `.firebaserc` (default=studio204-web). CI deploy: FirebaseExtended/action-hosting-deploy w/ repo secret `FIREBASE_SERVICE_ACCOUNT_STUDIO204_WEB` (service acct JSON). Local: `firebase deploy --only hosting`.
+- I.organism: `src/organism/` module (OrganismBackground/Controller/Simulation/Renderer/Parameters/DebugPanel + obstacle/ navigation/ simulation/ shaders/ math/ per handoff §5). Typed `OrganismConfig` central — no scattered magic numbers. DOM contract: `data-organism-obstacle` + `data-organism-padding|weight|allow-tendrils|hidden`. Capabilities: `{backend: 'webgpu'|'none', computeSupported, quality}`. Debug views (mask/sdf/skeleton/field/contacts) dev-only, stripped from prod. Coordinate converters viewportPx↔simulation↔obstacleUv unit-tested.
 - I.media: `scripts/media-pipeline.mjs` — scan content/*.json + src/index.html/scripts for cdn.prod.website-files.com urls → fetch originals → media-src/ → optimize → public/media/ + write url→path manifest → rewrite refs. Idempotent, rerun-safe.
 
 ## §V invariants
@@ -42,6 +44,9 @@ Ship production static site for studio "204 · NO-CONTENT". Implement design/ Di
 - V13: content constrained to max 1720px centered shell on wide screens; nav bar full-bleed w/ inner capped; nav/labels/chapter type fluid (no fixed tiny px on hidpi).
 - V14: ∀ /media/** response → `Cache-Control: public, max-age=31536000, immutable`; hashed /assets/** same; index.html + generated route HTML → no-cache/short. Content change → new filename (⊥ edit in place under same name).
 - V15: media weight budget: public/media total ≤ 80MB; ∀ video ≤ 40MB (quality > squeeze, user call 2026-07-21); ∀ img file ≤ 2MB; ∀ site-rendered img ≤ 500KB @ used rendition.
+- V17: organism canvas ⊥ intercepts pointer events; core ⊥ enters hard obstacle regions; UI text readability preserved (content above, opt-in obstacles protect marked elements).
+- V18: organism = separate lazy chunk, entry bundle unchanged; no WebGPU → zero runtime cost beyond capability check; V5/V6 hold w/ feature on & off.
+- V19: organism sim fixed-timestep + interpolation (frame-rate independent, no explosion after tab restore); reduced-motion → breathing-only, no pursuit/crawl (extends V7); no per-frame DOM layout reads on static pages; no GPU→CPU readback in loop.
 - V16: dual deploy: GH Pages build (VITE_BASE=/204.ai-web/) & Firebase build (base /) both exit 0; canonical + sitemap urls → Firebase (SITE_URL=https://studio204-web.web.app) until domain cutover.
 
 ## §T tasks
@@ -75,6 +80,16 @@ T26|x|ref rewrite: content/*.json media urls → /media/..., logo (index.html + 
 T27|x|firebase.json headers: /media/** + /assets/** immutable 1y, html no-cache; SPA rewrite; verify w/ curl -I on deployed site|I.firebase,V14
 T28|x|CI: add Firebase deploy job (action-hosting-deploy, service acct secret) alongside GH Pages job; Firebase build base=/ SITE_URL=studio204-web.web.app, canonical/sitemap → Firebase|C13,I.firebase,V16
 T30|x|rendition right-sizing (Lighthouse ~307KB): pipeline +`-p-160`/`-p-320`; partner/nav logos 500→320, maker avatars full→160 eager, MediaStill responsive srcset/sizes (thumb 320, letterbox 800w/1920w pair mirrored in generate-meta preload imagesrcset)|C12,V15
+T31|x|organism M1 canvas+capability: fullscreen canvas in Layout, WebGPURenderer init (webgpu-only, navigator.gpu gate), resize, fixed render loop, blank TSL pass, HMR-safe dispose, lazy mount post-idle|C14,I.organism,V17,V18
+T32|.|organism M2 obstacle mask: data-attr collection (ResizeObserver+scroll+invalidate, dirty-flag), canvas rasterize hard/comfort/weight/tendril channels @256w, coord converters + unit tests, debug mask view|C14,I.organism,V19
+T33|.|organism M3 obstacle SDF: jump-flood compute (seed→ping-pong→resolve→gradient), storage textures, verify alignment vs DOM, debug sdf/gradient views|C14,I.organism
+T34|.|organism M4 static creature field: TSL implicit field — anisotropic torso + lobes, 5 curved tapered limbs (capsule chains, smooth union w/ varied softness), crease/concavity, fwidth AA white silhouette, skeleton debug|C14
+T35|.|organism M5 simulation: fixed-timestep PBD (segment/bend/cohesion/volume constraints, 6 iter), interpolation, damping, pause/resume stable|C14,V19
+T36|.|organism M6 obstacle contact: SDF sampling @ joints/tips/core+predicted, soft repulsion + hard projection, tangential slide, contact debug, no clipping|C14,V17
+T37|.|organism M7 pointer attention: smoothed pointer state, attention vs body targets, dead zones, observe behavior, no direct following|C14
+T38|.|organism M8 navigation: 64×36 cost grid, A* on-demand (⊥ per frame), route smoothing, unreachable → nearest point + tendril probe + withdraw|C14
+T39|.|organism M9 locomotion+idle: anchor cycle crawl, state machine (Rest/Observe/Reach/Crawl/Brace/Settle/Withdraw w/ hysteresis), breathing 4-9s, gestures 4-14s seeded|C14,V19
+T40|.|organism M10 polish: quality modes high/balanced/low, reduced-motion mode, profiling (≤3ms GPU target), param tuning, debug stripped from prod|C14,V18,V19
 T29|x|verify sprint: build+lint, V4 grep empty, V6 rerun, player-probe, V15 size audit, curl header check both hosts, both deploys green|V4,V5,V6,V14,V15,V16
 
 ## §B bugs
