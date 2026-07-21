@@ -88,7 +88,7 @@ T35|x|organism M5 simulation: fixed-timestep PBD (segment/bend/cohesion/volume c
 T36|~|organism M6 obstacle contact: SDF sampling @ joints/tips/core+predicted, soft repulsion + hard projection, tangential slide, contact debug, no clipping|C14,V17
 T37|~|organism M7 pointer attention: smoothed pointer state, attention vs body targets, dead zones, observe behavior, no direct following|C14
 T38|x|organism M8 navigation: 64×36 cost grid, A* on-demand (⊥ per frame), route smoothing, unreachable → nearest point + 1-2 SNIFF tendrils (boundary-crawl: tangent step + SDF snap-back, per-tendril seed, subtle grasp — user 2026-07-21) + withdraw|C14
-T39|~|organism M9 locomotion+idle: anchor cycle crawl, state machine (Rest/Observe/Reach/Crawl/Brace/Settle/Withdraw w/ hysteresis), breathing 4-9s, gestures 4-14s seeded|C14,V19
+T39|x|organism M9 locomotion+idle: anchor cycle crawl, state machine (Rest/Observe/Reach/Crawl/Brace/Settle/Withdraw w/ hysteresis), breathing 4-9s, gestures 4-14s seeded|C14,V19
 T40|.|organism M10 polish: quality modes high/balanced/low, profiling (≤3ms GPU target), param tuning, debug stripped from prod (reduced-motion = disabled, no extra mode)|C14,V18,V19
 T29|x|verify sprint: build+lint, V4 grep empty, V6 rerun, player-probe, V15 size audit, curl header check both hosts, both deploys green|V4,V5,V6,V14,V15,V16
 
@@ -98,6 +98,8 @@ B1|2026-07-20|work hover preview absolute w/o viewport clamp → clipped bottom 
 B2|2026-07-20|nav status lines not optically flush right (block/text-align)|flex column + flex-end, cosmetic
 B3|2026-07-20|t-display tracking -0.02em (prototype = -0.02px ≈ none) + fixed 1280-design px caps → tiny type + dead space on large/hidpi screens|V12 + fluid clamps
 B4|2026-07-20|home not composed to viewport: fixed-height hero + oversized strap pushed CTA below fold on FHD; fixed-width chapter thumbs forced rail taller than hero (last item clipped); nav divider floating|hero flex-fills 100dvh-composed root, strap 6.2vw, thumbs derive width from row height, status divider stretched
+B17|2026-07-21|plant LOS check sampled the ON-boundary endpoint w/ core clearance → every healthy plant failed → silent per-frame release/replant churn (foot jitter) + mid-churn corner bridges press-cut into floating pads|bridgeClear(): interior samples, obstacle-only distance, tip-scale clearance; plants accepted only w/ clear bridge; footfalls offset out by tip radius
+B16|2026-07-21|browser scroll-restore fired a phantom page-shift on frame 1 → creature streaked across the whole screen on load|lazy lastScrollY init; shiftPageY also shifts render-lerp state
 B15|2026-07-21|load smear: spawn pose radial → on-screen morph into role pose read as stretched caramel ~1.5s|spawn directly in walker/upper role pose + 150-step prewarm before first rendered frame
 B14|2026-07-21|planted tip pinned across obstacle while body ejected opposite side → limb bridged THROUGH box (stagger gate blocked emergency release); also intention target snapped on LOS loss|forced release >1.3× stretch; smoothed intention target (0.55s half-life); no-flight shell locomotion
 B13|2026-07-21|lockfile drift recurrence (proxy-agent@8.0.2 missing): local npm 11 writes lockfiles CI npm 10 (node 22) rejects → both organism pushes failed deploy|CI node 22→24 (npm 11 parity, node 24 = LTS); organism additionally gated VITE_ORGANISM=off in prod until user go

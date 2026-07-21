@@ -141,6 +141,9 @@ export function buildOutputNodes(opts: {
   debugView: Node
   particles: Node
   particleCount: number
+  appendageCount: number
+  jointsPerAppendage: number
+  indexOf: (a: number, j: number) => number
   opacity: number
   edgeSoftnessPx: number
   includeDebug: boolean
@@ -194,12 +197,28 @@ export function buildOutputNodes(opts: {
   // 5: outline — stroke along the zero isoline, shape readable over content
   const outlineHit = smoothstep(w.mul(3), float(0), distance.abs())
 
+  // 6: limbs — each appendage in its own color for visual inspection
+  const PALETTE = [vec3(1, 0.3, 0.25), vec3(1, 0.75, 0.2), vec3(0.35, 1, 0.4), vec3(0.3, 0.75, 1), vec3(0.7, 0.4, 1), vec3(1, 0.4, 0.85)]
+  let limbColor: Node = vec3(0.9, 0.9, 0.9)
+  let bestD: Node = float(1e5)
+  for (let a = 0; a < opts.appendageCount; a++) {
+    let dA: Node = float(1e5)
+    for (let j = 0; j < opts.jointsPerAppendage; j++) {
+      const pp = opts.particles.element(opts.indexOf(a, j))
+      dA = min(dA, simPos.sub(pp.xy).length().sub(pp.z))
+    }
+    const closer = dA.lessThan(bestD)
+    limbColor = closer.select(PALETTE[a % PALETTE.length], limbColor)
+    bestD = min(bestD, dA)
+  }
+  const limbsView = limbColor.mul(coverage.clamp(0.15, 1))
+
   const dv = debugView
   const colorNode = dv
     .equal(1)
     .select(
       maskS.xyz,
-      dv.equal(2).select(sdfView, dv.equal(3).select(fieldView, dv.equal(4).select(skelView, dv.equal(5).select(vec3(1, 0.35, 0.2), vec3(1, 1, 1))))),
+      dv.equal(2).select(sdfView, dv.equal(3).select(fieldView, dv.equal(4).select(skelView, dv.equal(5).select(vec3(1, 0.35, 0.2), dv.equal(6).select(limbsView, vec3(1, 1, 1)))))),
     )
   const opacityNode = dv
     .equal(0)

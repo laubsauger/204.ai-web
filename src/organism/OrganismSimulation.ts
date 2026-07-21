@@ -73,6 +73,21 @@ export class OrganismSimulation {
   private maxReach: number
   /* planted tip anchors — the walking substrate (§22, user 2026-07-21) */
   private plants: Array<{ x: number; y: number; active: boolean }> = []
+  /* M9 state machine — Rest/Pursue/Settle/Sniff/Jump with min durations */
+  state: 'rest' | 'pursue' | 'settle' | 'sniff' | 'jump' = 'rest'
+  private stateSince = 0
+  private jumpT = 0
+  private jumpDur = 1
+  private jumpSX = 0
+  private jumpSY = 0
+  private jumpEX = 0
+  private jumpEY = 0
+  private setState(next: 'rest' | 'pursue' | 'settle' | 'sniff' | 'jump') {
+    if (this.state !== next) {
+      this.state = next
+      this.stateSince = this.time
+    }
+  }
   private lastReleaseTime = -10
   dbgMoving = false
   dbgGoalDist = 0
@@ -90,6 +105,7 @@ export class OrganismSimulation {
       p.prevY[i] += dySim
     }
     this.anchorY += dySim
+    for (let i = 0; i < p.count; i++) p.renderY[i] += dySim // no smear lerp
     for (const pl of this.plants) if (pl.active) pl.y += dySim
   }
 
@@ -298,12 +314,56 @@ export class OrganismSimulation {
     const moving = goalDist > (this.pointerActive ? 0.13 : 0.05)
     this.dbgMoving = moving
     this.dbgGoalDist = goalDist
+
+    // ---- state transitions (min durations + hysteresis, §18/§24) ----
+    const inState = this.time - this.stateSince
+    if (this.state !== 'jump') {
+      if (this.sniffing && this.state !== 'sniff') this.setState('sniff')
+      else if (this.state === 'rest' && goalDist > 0.3 && inState > 1.5) this.setState('pursue')
+      else if (this.state === 'pursue' && goalDist < 0.14 && inState > 1) this.setState('settle')
+      else if (this.state === 'settle' && inState > 1) this.setState('rest')
+      else if ((this.state === 'settle' || this.state === 'sniff') && goalDist > 0.35 && !this.sniffing) this.setState('pursue')
+      // jump trigger: the next waypoint leaves the surface shell — the one
+      // sanctioned no-fly exception (user 2026-07-21): ballistic hop to the
+      // next on-shell point of the route
+      if (this.state === 'pursue' && this.route && this.routeIdx < this.route.points.length) {
+        const wp = this.route.points[this.routeIdx]
+        if (this.surfaceDist(wp.x, wp.y) > this.maxReach * 0.6) {
+          let land: { x: number; y: number } | null = null
+          for (let k = this.routeIdx; k < this.route.points.length; k++) {
+            const c = this.route.points[k]
+            if (this.surfaceDist(c.x, c.y) <= this.maxReach * 0.45) {
+              land = c
+              break
+            }
+          }
+          if (!land) {
+            const g = this.route.points[this.route.points.length - 1]
+            const gn = this.surfaceNormalInto(g.x, g.y, this.normal2)
+            const gd = this.surfaceDist(g.x, g.y)
+            land = { x: g.x - gn.x * (gd - this.maxReach * 0.3), y: g.y - gn.y * (gd - this.maxReach * 0.3) }
+          }
+          const gap = Math.hypot(land.x - p.posX[0], land.y - p.posY[0])
+          if (goalDist > 0.3 && gap > this.maxReach * 1.2 && gap < 0.6) {
+            this.jumpSX = p.posX[0]
+            this.jumpSY = p.posY[0]
+            this.jumpEX = land.x
+            this.jumpEY = land.y
+            this.jumpDur = Math.max(0.35, gap / 0.5)
+            this.jumpT = 0
+            for (const pl of this.plants) pl.active = false
+            this.setState('jump')
+          }
+        }
+      }
+    }
+    const S = this.state
     const travelDirX = moving ? tdx / tlen : 0
     const travelDirY = moving ? tdy / tlen : 0
     this.dbgTravel = [travelDirX, travelDirY]
 
     // ---- surface rest + planting (walking substrate — §20/§22) ----
-    {
+    if (this.state !== 'jump') {
       // carry height breathes slowly, crouches while moving; spring is
       // ALWAYS on (clamped) — detached bodies sink to the nearest surface
       const speedNorm = Math.min(1, Math.hypot(this.coreVelX, this.coreVelY) / 0.08)
@@ -338,7 +398,7 @@ export class OrganismSimulation {
     if (inRange) for (let a = 0; a < Math.min(4, p.appendageCount); a++) wantPlant.add(a)
     // stride clock: while traveling, the most-behind planted foot lifts
     // every ~0.55s and re-plants ahead — visible stepping, not dragging
-    if (moving && this.time - this.lastReleaseTime > 0.55) {
+    if (S === 'pursue' && moving && this.time - this.lastReleaseTime > 0.55) {
       let worst = -1
       let worstDot = Infinity
       for (let a = 0; a < Math.min(4, p.appendageCount); a++) {
@@ -360,7 +420,7 @@ export class OrganismSimulation {
     for (let a = 0; a < p.appendageCount; a++) {
       const plant = this.plants[a]
       const rootI = p.indexOf(a, 0)
-      if (plant.active && !this.hasLOS(p.posX[rootI], p.posY[rootI], plant.x, plant.y)) {
+      if (plant.active && !this.bridgeClear(p.posX[rootI], p.posY[rootI], plant.x, plant.y)) {
         // root→plant crosses a boundary — the press-cut would sever the
         // limb and leave a floating foot bubble; let go instead
         plant.active = false
@@ -372,12 +432,13 @@ export class OrganismSimulation {
         const may = this.time - this.lastReleaseTime > 0.45
         // EMERGENCY: badly overstretched grips let go immediately — a tip
         // pinned across an obstacle bridges the body through it (B14)
-        if (stretch > this.chainLen[a] * 1.3 || !wantPlant.has(a) || (stretch > this.chainLen[a] * 1.06 && may)) {
+        const gaitRelease = S === 'pursue' && stretch > this.chainLen[a] * 1.06 && may
+        if (stretch > this.chainLen[a] * 1.3 || (S === 'pursue' && !wantPlant.has(a)) || gaitRelease) {
           plant.active = false
           this.lastReleaseTime = this.time
         }
       }
-      if (!plant.active && wantPlant.has(a)) {
+      if (!plant.active && wantPlant.has(a) && (S === 'pursue' || S === 'settle' || (S === 'rest' && inState < 0.3))) {
         // plant ahead of travel: tip projected onto the surface with a lead
         // along the tangent in the movement direction
         const tangX = -surfNY
@@ -401,7 +462,12 @@ export class OrganismSimulation {
           tx -= this.normal.x * td
           ty -= this.normal.y * td
         }
-        if (Math.hypot(tx - p.posX[rootI], ty - p.posY[rootI]) < this.chainLen[a]) {
+        // stand ON the surface, not IN it — a pad centered on the boundary
+        // gets halved by the press-cut and reads as a floating bubble
+        const tipR = p.radius[p.indexOf(a, p.jointsPerAppendage - 1)]
+        tx += this.normal.x * tipR * 1.2
+        ty += this.normal.y * tipR * 1.2
+        if (Math.hypot(tx - p.posX[rootI], ty - p.posY[rootI]) < this.chainLen[a] && this.bridgeClear(p.posX[rootI], p.posY[rootI], tx, ty)) {
           plant.x = tx
           plant.y = ty
           plant.active = true
@@ -460,9 +526,17 @@ export class OrganismSimulation {
             p.posX[i] += (plant.x - p.posX[i]) * Math.min(1, dt * 16)
             p.posY[i] += (plant.y - p.posY[i]) * Math.min(1, dt * 16)
           } else {
+            // planted limbs snake too: slow S-wave across the bridge plus
+            // outward sag — no straight strut limbs (user 2026-07-21)
+            const bridgeX = plant.x - p.posX[rootI]
+            const bridgeY = plant.y - p.posY[rootI]
+            const bl = Math.hypot(bridgeX, bridgeY) || 1
+            const perpX = -bridgeY / bl
+            const perpY = bridgeX / bl
+            const snake = Math.sin(t * Math.PI * 2 + this.time * d.curlFreq * Math.PI * 2 + d.curlPhase) * this.chainLen[a] * 0.09 * Math.sin(t * Math.PI)
             const sag = Math.sin(t * Math.PI) * this.chainLen[a] * 0.08
-            const bx = p.posX[rootI] + (plant.x - p.posX[rootI]) * t + surfNX * sag
-            const by = p.posY[rootI] + (plant.y - p.posY[rootI]) * t + surfNY * sag
+            const bx = p.posX[rootI] + bridgeX * t + surfNX * sag + perpX * snake
+            const by = p.posY[rootI] + bridgeY * t + surfNY * sag + perpY * snake
             p.posX[i] += (bx - p.posX[i]) * Math.min(1, dt * 2.2)
             p.posY[i] += (by - p.posY[i]) * Math.min(1, dt * 2.2)
           }
@@ -610,9 +684,23 @@ export class OrganismSimulation {
     this.coreVelX += (cvx - this.coreVelX) * Math.min(1, dt * 3)
     this.coreVelY += (cvy - this.coreVelY) * Math.min(1, dt * 3)
 
+    // jump: ballistic arc, everything else suspended
+    if (S === 'jump') {
+      this.jumpT += dt / this.jumpDur
+      const t01 = Math.min(1, this.jumpT)
+      const ease = t01 * t01 * (3 - 2 * t01)
+      const upx = -(this.jumpEY - this.jumpSY)
+      const upy = this.jumpEX - this.jumpSX
+      const ul = Math.hypot(upx, upy) || 1
+      const arc = Math.sin(t01 * Math.PI) * 0.12 * Math.hypot(this.jumpEX - this.jumpSX, this.jumpEY - this.jumpSY)
+      p.posX[0] = this.jumpSX + (this.jumpEX - this.jumpSX) * ease + (upx / ul) * arc
+      p.posY[0] = this.jumpSY + (this.jumpEY - this.jumpSY) * ease + (upy / ul) * arc
+      if (t01 >= 1) this.setState('pursue')
+    }
+
     // locomotion: the body is PULLED by its planted anchors toward their
     // centroid + a travel lead — speed emerges from the step cadence
-    if (tlen > 0.015) {
+    if (S !== 'jump' && S === 'pursue' && tlen > 0.015) {
       let planted = 0
       let sumX = 0
       let sumY = 0
@@ -647,6 +735,21 @@ export class OrganismSimulation {
         // no feet down (free space) — slow direct drift only
         p.posX[0] += travelDirX * maxStep * 0.35
         p.posY[0] += travelDirY * maxStep * 0.35
+      }
+    }
+
+    // overstretch hard cap: the body can never pull further than 1.25×
+    // chain from any planted foot — caramel stretching is impossible
+    for (let a = 0; a < Math.min(4, p.appendageCount); a++) {
+      const pl = this.plants[a]
+      if (!pl.active) continue
+      const dx = p.posX[0] - pl.x
+      const dy = p.posY[0] - pl.y
+      const dd = Math.hypot(dx, dy)
+      const lim = this.chainLen[a] * 1.25 + p.radius[0]
+      if (dd > lim) {
+        p.posX[0] = pl.x + (dx / dd) * lim
+        p.posY[0] = pl.y + (dy / dd) * lim
       }
     }
 
@@ -712,6 +815,19 @@ export class OrganismSimulation {
 
   invalidateRoute() {
     this.route = null
+  }
+
+  /** Can a limb bridge from root to a plant point without crossing an
+      obstacle? Interior samples only (the plant itself sits ON the surface)
+      and obstacle-only distance (viewport edges are valid footing). */
+  private bridgeClear(ax: number, ay: number, bx: number, by: number): boolean {
+    if (!this.obstacles.length) return true
+    for (const t of [0.25, 0.45, 0.65, 0.82]) {
+      const x = ax + (bx - ax) * t
+      const y = ay + (by - ay) * t
+      if (sdObstacles(x, y, this.obstacles, this.obstacleRounding) < 0.008) return false
+    }
+    return true
   }
 
   private hasLOS = (ax: number, ay: number, bx: number, by: number): boolean => {

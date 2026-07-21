@@ -25,7 +25,7 @@ export async function detectCapabilities(): Promise<OrganismCapabilities> {
 function debugViewFromQuery(): number {
   if (!import.meta.env.DEV) return 0
   const v = new URLSearchParams(location.search).get('organism')
-  return { final: 0, mask: 1, sdf: 2, field: 3, skeleton: 4, outline: 5 }[v ?? 'final'] ?? 0
+  return { final: 0, mask: 1, sdf: 2, field: 3, skeleton: 4, outline: 5, limbs: 6 }[v ?? 'final'] ?? 0
 }
 
 export async function mountOrganism(
