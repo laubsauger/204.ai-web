@@ -73,9 +73,9 @@ T24|x|Firebase bootstrap (interactive w/ user): firebase login, projects:create 
 T25|x|media pipeline scripts/media-pipeline.mjs: url scan → fetch → media-src/ → sharp (webp full+800, jpg -p-800 og) + ffmpeg (mp4 1080p CRF, drop webm) → public/media/ + manifest; report per-file before/after sizes|C12,I.media,V15
 T26|x|ref rewrite: content/*.json media urls → /media/..., logo (index.html + useHead + generate-meta), -p-800 helpers → local paths (src/lib/media.ts, useHead.ts, generate-meta.mjs), drop cdn preconnect/dns-prefetch, video entries mp4-only|C12,V4
 T27|x|firebase.json headers: /media/** + /assets/** immutable 1y, html no-cache; SPA rewrite; verify w/ curl -I on deployed site|I.firebase,V14
-T28|~|CI: add Firebase deploy job (action-hosting-deploy, service acct secret) alongside GH Pages job; Firebase build base=/ SITE_URL=studio204-web.web.app, canonical/sitemap → Firebase|C13,I.firebase,V16
+T28|x|CI: add Firebase deploy job (action-hosting-deploy, service acct secret) alongside GH Pages job; Firebase build base=/ SITE_URL=studio204-web.web.app, canonical/sitemap → Firebase|C13,I.firebase,V16
 T30|x|rendition right-sizing (Lighthouse ~307KB): pipeline +`-p-160`/`-p-320`; partner/nav logos 500→320, maker avatars full→160 eager, MediaStill responsive srcset/sizes (thumb 320, letterbox 800w/1920w pair mirrored in generate-meta preload imagesrcset)|C12,V15
-T29|.|verify sprint: build+lint, V4 grep empty, V6 rerun, player-probe, V15 size audit, curl header check both hosts, both deploys green|V4,V5,V6,V14,V15,V16
+T29|x|verify sprint: build+lint, V4 grep empty, V6 rerun, player-probe, V15 size audit, curl header check both hosts, both deploys green|V4,V5,V6,V14,V15,V16
 
 ## §B bugs
 id|date|cause|fix
