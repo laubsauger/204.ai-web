@@ -92,7 +92,7 @@ export function creatureDistance(
       const p0 = part(layout.indexOf(a, j))
       const p1 = part(layout.indexOf(a, j + 1))
       const t = j / (layout.jointsPerAppendage - 1)
-      const k = j === 0 ? R * 1.5 : t < 0.55 ? R * 0.9 : R * 0.5
+      const k = j === 0 ? R * 0.9 : t < 0.55 ? R * 0.65 : R * 0.45
       const seg = sdTaperedSegment(p, p0.xy, p1.xy, p0.z.mul(p0.w), p1.z.mul(p1.w))
       d = sminN(d, seg, k)
     }
@@ -104,8 +104,8 @@ export function creatureDistance(
   for (let a = 0; a < walkers - 1; a++) {
     const a1 = part(layout.indexOf(a, 1))
     const b1 = part(layout.indexOf(a + 1, 1))
-    const web1 = sdTaperedSegment(p, a1.xy, b1.xy, float(R * 0.1), float(R * 0.1))
-    d = sminN(d, web1, R * 0.9)
+    const web1 = sdTaperedSegment(p, a1.xy, b1.xy, float(R * 0.07), float(R * 0.07))
+    d = sminN(d, web1, R * 0.55)
     const a2 = part(layout.indexOf(a, 2))
     const b2 = part(layout.indexOf(a + 1, 2))
     const web2 = sdTaperedSegment(p, a2.xy, b2.xy, float(R * 0.045), float(R * 0.045))

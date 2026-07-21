@@ -45,7 +45,7 @@ export class OrganismController {
     this.lobeSeeds = Array.from({ length: LOBE_COUNT }, () => ({
       ang: rnd() * Math.PI * 2,
       dist: 0.25 + rnd() * 0.3,
-      r: 0.22 + rnd() * 0.12,
+      r: 0.14 + rnd() * 0.08,
     }))
 
     this.field = new ObstacleDistanceField(renderer, this.mask.texture, this.mask.width, this.mask.height)
