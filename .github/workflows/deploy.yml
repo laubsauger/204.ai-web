@@ -1,4 +1,4 @@
-name: Deploy to GitHub Pages
+name: Deploy (Firebase primary + GitHub Pages secondary)
 
 on:
   push:
@@ -15,7 +15,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build:
+  # Primary host (SPEC C13/V16): studio204-web.web.app — base /, canonical
+  deploy-firebase:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -33,8 +34,38 @@ jobs:
       - name: Build
         run: npm run build
         env:
+          SITE_URL: https://studio204-web.web.app
+
+      - name: Deploy to Firebase Hosting
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_STUDIO204_WEB }}
+          channelId: live
+          projectId: studio204-web
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # SITE_URL stays the Firebase host: the secondary GH Pages deploy
+      # canonicalizes to the primary (SPEC V16) instead of competing with it
+      - name: Build
+        run: npm run build
+        env:
           VITE_BASE: /204.ai-web/
-          SITE_URL: https://laubsauger.github.io/204.ai-web
+          SITE_URL: https://studio204-web.web.app
 
       - name: SPA fallback (404.html)
         run: cp dist/index.html dist/404.html
