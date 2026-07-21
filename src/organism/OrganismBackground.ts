@@ -35,8 +35,10 @@ export async function detectCapabilities(): Promise<OrganismCapabilities> {
   }
 }
 
+const LAB_PAGE = typeof location !== 'undefined' && location.pathname.includes('organism-lab')
+
 function debugViewFromQuery(): number {
-  if (!import.meta.env.DEV) return 0
+  if (!import.meta.env.DEV && !LAB_PAGE) return 0
   const v = new URLSearchParams(location.search).get('organism')
   return { final: 0, mask: 1, sdf: 2, field: 3, skeleton: 4, outline: 5, limbs: 6 }[v ?? 'final'] ?? 0
 }

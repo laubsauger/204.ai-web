@@ -28,7 +28,7 @@ type LimbDriver = {
 type Swing = { active: boolean; fromX: number; fromY: number; toX: number; toY: number; t: number }
 
 const LEGS = 3
-const SWING_TIME = 0.26
+const SWING_TIME = 0.34 // softer arcs
 /* jumps off until walking earns trust — they read as erratic zips
    (user 2026-07-21); re-enable for true gap-crossings later */
 const JUMP_ENABLED = true // safe now: progress-gated + arc-clear + absolute speed cap
@@ -762,7 +762,7 @@ export class OrganismSimulation {
           this.stanceX += (cX - this.stanceX) * ck
           this.stanceY += (cY - this.stanceY) * ck
           const surge = this.time < this.surgeUntil
-          const gain = surge ? 1.5 : 1.2
+          const gain = surge ? 1.35 : 1.2 // overlapping soft pulses = glide-walk
           const pullX = this.stanceX + travelDirX * this.maxReach * 0.5
           const pullY = this.stanceY + travelDirY * this.maxReach * 0.5
           let mx = (pullX - p.posX[0]) * Math.min(1, dt * gain)
@@ -853,7 +853,7 @@ export class OrganismSimulation {
       // stagnation breaker (T41): traveling but no step for 1.2s = the
       // mid-stride equilibrium — force the most-behind foot to step
       let forceStep = -1
-      if (S === 'pursue' && moving && this.time - this.lastReleaseTime > 1.8) {
+      if (S === 'pursue' && moving && this.time - this.lastReleaseTime > 1.4) {
         let worstDot = Infinity
         for (let a = 0; a < LEGS; a++) {
           const pl = this.plants[a]
@@ -872,7 +872,7 @@ export class OrganismSimulation {
         const stretch = Math.hypot(pl.x - p.posX[rootI], pl.y - p.posY[rootI])
         const bad = !this.bridgeClear(p.posX[rootI], p.posY[rootI], pl.x, pl.y) || stretch > this.chainLen[a] * 1.3
         const behind = (pl.x - p.posX[0]) * travelDirX + (pl.y - p.posY[0]) * travelDirY < -this.chainLen[a] * 0.3
-        const gait = S === 'pursue' && (stretch > this.chainLen[a] * 1.06 || behind) && this.time - this.lastReleaseTime > 0.8
+        const gait = S === 'pursue' && (stretch > this.chainLen[a] * 1.06 || behind) && this.time - this.lastReleaseTime > 0.5
         if (bad || gait || a === forceStep) {
           pl.active = false
           this.lastReleaseTime = this.time
@@ -944,7 +944,7 @@ export class OrganismSimulation {
           this.plants[a].y = sw.toY
           this.plants[a].active = true
           this.lastPlantTime = this.time
-          this.surgeUntil = this.time + 0.32
+          this.surgeUntil = this.time + 0.45
         }
       }
     }

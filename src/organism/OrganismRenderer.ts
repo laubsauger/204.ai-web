@@ -68,7 +68,7 @@ export class OrganismRenderer {
       opacity: config.appearance.opacity,
       edgeSoftnessPx: config.appearance.edgeSoftnessPx,
       internalShadingStrength: config.appearance.internalShadingStrength,
-      includeDebug: import.meta.env.DEV,
+      includeDebug: import.meta.env.DEV || (typeof location !== 'undefined' && location.pathname.includes('organism-lab')),
       glow: this.glow,
     })
 

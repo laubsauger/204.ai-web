@@ -173,7 +173,7 @@ export function buildOutputNodes(opts: {
   /* interior anatomy (user 2026-07-21): bright rim shell → markedly
      darker interior, with each limb's CORE reading as a lighter ridge —
      internal structure, not a flat white blotch */
-  const rim = float(1).sub(smoothstep(0, R * 0.24, distance.negate()))
+  const rim = float(1).sub(smoothstep(0, R * 0.12, distance.negate())) // tight membrane band
   // per-limb core ridges: light along each limb's centerline
   let limbCore: Node = float(0)
   for (let a = 0; a < opts.appendageCount; a++) {
@@ -192,10 +192,10 @@ export function buildOutputNodes(opts: {
   const press = float(1).sub(smoothstep(0, R * 0.35, boundaryD.abs())).mul(coverageRaw).mul(0.1)
   const tone = float(interiorBase)
     .add(rim.mul(1 - interiorBase))
-    .add(limbCore.mul(0.15))
+    .add(limbCore.mul(0.12))
     .sub(mottle.mul(0.08))
     .add(press)
-    .clamp(0.08, 1)
+    .clamp(0.05, 1)
   const shaded = vec3(tone)
   /* proximity glow: ONLY the nearest tip heats toward the accent
      (#c9442b) as it nears the cursor's touch radius — localized want */
