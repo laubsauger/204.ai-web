@@ -1,10 +1,13 @@
-// Skeleton simulation (handoff §11/§12/§19, SPEC V19): Verlet integration +
-// position-based constraints at a fixed timestep. Idle life = seeded slow
-// oscillators driving limb sway, torso breathing and core drift — never
-// unseeded randomness, never per-frame topology changes.
+// Procedural walker simulation (handoff §11/§12/§18-§23, SPEC V19).
 //
-// Obstacles are sampled ANALYTICALLY from the collected rects (exact CPU
-// mirror of the GPU field, math/sdf.ts) — no GPU readback (V19).
+// Architecture (user 2026-07-21): explicit foot/seek TARGETS + kinematic
+// FABRIK chains. Limb joints carry no velocity and run through no solver —
+// same inputs, same pose, zero jitter by construction. Only the CORE is
+// dynamic (Verlet + springs). Legs: plant targets on surfaces, swing arcs
+// between plants. Seekers: eased seek points at varying extension with
+// curvature bias — snaky, never rigidly extended.
+//
+// Obstacles are sampled analytically (math/sdf.ts) — no GPU readback (V19).
 
 import { ParticleBuffer, mulberry32 } from './simulation/ParticleBuffer'
 import { obstacleNormal, sdObstacles, type SimRect, type Vec2 } from './math/sdf'
@@ -18,15 +21,19 @@ type LimbDriver = {
   curlFreq: number
   curlPhase: number
   restAngle: number
-  /* root attachment slowly migrates around the torso (handoff §11) */
   rootDriftFreq: number
   rootDriftAmp: number
 }
 
+type Swing = { active: boolean; fromX: number; fromY: number; toX: number; toY: number; t: number }
+
+const LEGS = 3
+const SWING_TIME = 0.26
+
 export class OrganismSimulation {
   private restLengths: Float32Array
-  private tgtX!: Float32Array
-  private tgtY!: Float32Array
+  private chainLen: Float32Array
+  private maxReach: number
   private drivers: LimbDriver[] = []
   private breathePhase = 0
   private breathePhase2 = 0
@@ -35,9 +42,66 @@ export class OrganismSimulation {
   private normal2: Vec2 = { x: 0, y: 0 }
   private smNX = 0
   private smNY = -1
-  /* padded obstacle rects, refreshed by the controller after collection */
   obstacles: SimRect[] = []
   obstacleRounding = 0.02
+  viewportAspect = 1.6
+  anchorX = 1.02
+  anchorY = 0.42
+  coreVelX = 0
+  coreVelY = 0
+
+  /* pointer */
+  pointerRawX = 0
+  pointerRawY = 0
+  pointerActive = false
+  private pointerX = 0
+  private pointerY = 0
+  private slowPX = 0
+  private slowPY = 0
+  private pointerInit = false
+  private pointerRampStart = -1
+
+  /* intention / navigation */
+  intentX = 1.02
+  intentY = 0.42
+  nav: NavigationField | null = null
+  route: RouteResult | null = null
+  routeIdx = 0
+  private routeGoalX = 0
+  private routeGoalY = 0
+  private lastRouteTime = -10
+  private sniffing = false
+  private lastPointerDist = Infinity
+  private lastProgressTime = 0
+
+  /* state machine (M9) */
+  state: 'rest' | 'pursue' | 'settle' | 'sniff' | 'jump' = 'rest'
+  private stateSince = 0
+  private pursueBestDist = Infinity
+  private pursueBestAt = 0
+  private jumpT = 0
+  private jumpDur = 1
+  private jumpSX = 0
+  private jumpSY = 0
+  private jumpEX = 0
+  private jumpEY = 0
+
+  /* feet */
+  plants: Array<{ x: number; y: number; active: boolean }> = []
+  private swings: Swing[] = []
+  private lastReleaseTime = -10
+  private lastPlantTime = -10
+  private surgeUntil = -10
+  /* seekers: eased targets */
+  private seekX: Float32Array
+  private seekY: Float32Array
+
+  dbgReleases = 0
+  dbgMoving = false
+  dbgGoalDist = 0
+  dbgTravel: [number, number] = [0, 0]
+  dbgStride = ''
+
   constructor(
     private particles: ParticleBuffer,
     private config: OrganismConfig,
@@ -46,9 +110,9 @@ export class OrganismSimulation {
     const rnd = mulberry32(seed)
     const p = particles
     this.restLengths = new Float32Array(p.count)
-    this.tgtX = Float32Array.from(p.posX)
-    this.tgtY = Float32Array.from(p.posY)
     this.chainLen = new Float32Array(p.appendageCount)
+    this.seekX = new Float32Array(p.appendageCount)
+    this.seekY = new Float32Array(p.appendageCount)
     for (let a = 0; a < p.appendageCount; a++) {
       for (let j = 0; j < p.jointsPerAppendage - 1; j++) {
         const i0 = p.indexOf(a, j)
@@ -57,7 +121,6 @@ export class OrganismSimulation {
         this.chainLen[a] += this.restLengths[i1]
       }
       const root = p.indexOf(a, 0)
-      // slow, heavy cadence (§23) — fast oscillators read as nervous
       this.drivers.push({
         swayFreq: 0.06 + rnd() * 0.11,
         swayPhase: rnd() * Math.PI * 2,
@@ -69,58 +132,39 @@ export class OrganismSimulation {
         rootDriftAmp: 0.15 + rnd() * 0.25,
       })
       this.plants.push({ x: 0, y: 0, active: false })
+      this.swings.push({ active: false, fromX: 0, fromY: 0, toX: 0, toY: 0, t: 0 })
+      const tip = p.indexOf(a, p.jointsPerAppendage - 1)
+      this.seekX[a] = p.posX[tip]
+      this.seekY[a] = p.posY[tip]
     }
     this.maxReach = Math.max(...Array.from(this.chainLen)) + particles.radius[0]
   }
 
-  private chainLen: Float32Array
-  private maxReach: number
-  /* planted tip anchors — the walking substrate (§22, user 2026-07-21) */
-  private plants: Array<{ x: number; y: number; active: boolean }> = []
-  /* M9 state machine — Rest/Pursue/Settle/Sniff/Jump with min durations */
-  state: 'rest' | 'pursue' | 'settle' | 'sniff' | 'jump' = 'rest'
-  private stateSince = 0
-  private pursueBestDist = Infinity
-  private pursueBestAt = 0
-  dbgReleases = 0
-  private jumpT = 0
-  private jumpDur = 1
-  private jumpSX = 0
-  private jumpSY = 0
-  private jumpEX = 0
-  private jumpEY = 0
-  private setState(next: 'rest' | 'pursue' | 'settle' | 'sniff' | 'jump') {
-    if (this.state !== next) {
-      this.state = next
-      this.stateSince = this.time
-      if (next === 'pursue') {
-        this.pursueBestDist = Infinity
-        this.pursueBestAt = this.time
-      }
-    }
+  invalidateRoute() {
+    this.route = null
   }
-  private lastReleaseTime = -10
-  dbgMoving = false
-  dbgGoalDist = 0
-  dbgTravel = [0, 0]
-  dbgStride = ''
-  private lastPlantTime = -10
-  private surgeUntil = -10
 
-  /** Page anchoring: on scroll the whole state shifts so the creature stays
-      glued to the DOCUMENT, then walks back into view organically. */
   shiftPageY(dySim: number) {
     const p = this.particles
     for (let i = 0; i < p.count; i++) {
       p.posY[i] += dySim
       p.prevY[i] += dySim
+      p.renderY[i] += dySim
     }
     this.anchorY += dySim
-    for (let i = 0; i < p.count; i++) p.renderY[i] += dySim // no smear lerp
+    this.intentY += dySim
     for (const pl of this.plants) if (pl.active) pl.y += dySim
+    for (const sw of this.swings) {
+      if (sw.active) {
+        sw.fromY += dySim
+        sw.toY += dySim
+      }
+    }
+    for (let a = 0; a < this.particles.appendageCount; a++) this.seekY[a] += dySim
   }
 
-  /* nearest walkable surface = obstacle boundaries + viewport edges */
+  /* ---------------- fields ---------------- */
+
   private surfaceDist(x: number, y: number): number {
     const edge = Math.min(x, this.viewportAspect - x, y, 1 - y)
     const obs = this.obstacles.length ? sdObstacles(x, y, this.obstacles, this.obstacleRounding) : Infinity
@@ -137,28 +181,182 @@ export class OrganismSimulation {
     return out
   }
 
-  /** One fixed step. dt = config.simulation.fixedDelta. */
+  private clear(x: number, y: number, margin: number): boolean {
+    if (x < margin || x > this.viewportAspect - margin || y < margin || y > 1 - margin) return false
+    if (!this.obstacles.length) return true
+    return sdObstacles(x, y, this.obstacles, this.obstacleRounding) >= margin
+  }
+
+  private reachableTowards(fromX: number, fromY: number, toX: number, toY: number, clearance: number): Vec2 {
+    for (let s = 8; s >= 0; s--) {
+      const t = s / 8
+      const x = fromX + (toX - fromX) * t
+      const y = fromY + (toY - fromY) * t
+      const mx = fromX + (toX - fromX) * t * 0.5
+      const my = fromY + (toY - fromY) * t * 0.5
+      if (this.clear(x, y, clearance) && this.clear(mx, my, clearance * 0.6)) return { x, y }
+    }
+    return { x: fromX, y: fromY }
+  }
+
+  private bridgeClear(ax: number, ay: number, bx: number, by: number): boolean {
+    if (!this.obstacles.length) return true
+    for (const t of [0.25, 0.45, 0.65, 0.82]) {
+      const x = ax + (bx - ax) * t
+      const y = ay + (by - ay) * t
+      if (sdObstacles(x, y, this.obstacles, this.obstacleRounding) < 0.008) return false
+    }
+    return true
+  }
+
+  private hasLOS = (ax: number, ay: number, bx: number, by: number): boolean => {
+    for (let k = 1; k <= 8; k++) {
+      const t = k / 8
+      if (!this.clear(ax + (bx - ax) * t, ay + (by - ay) * t, this.particles.radius[0] * 1.1)) return false
+    }
+    return true
+  }
+
+  private setState(next: 'rest' | 'pursue' | 'settle' | 'sniff' | 'jump') {
+    if (this.state !== next) {
+      this.state = next
+      this.stateSince = this.time
+      if (next === 'pursue') {
+        this.pursueBestDist = Infinity
+        this.pursueBestAt = this.time
+      }
+    }
+  }
+
+  /** Project a point onto the surface, standing off by `standoff`. */
+  private projectToSurface(x: number, y: number, standoff: number): Vec2 {
+    let px = x
+    let py = y
+    for (let it = 0; it < 3; it++) {
+      const d = this.surfaceDist(px, py)
+      this.surfaceNormalInto(px, py, this.normal2)
+      px -= this.normal2.x * (d - standoff)
+      py -= this.normal2.y * (d - standoff)
+    }
+    return { x: px, y: py }
+  }
+
+  /**
+   * FABRIK solve for one limb: root pinned, tip toward target, joints
+   * kinematic (pos AND prev written — zero velocity, zero jitter by
+   * construction). `bend` arcs the chain perpendicular to root→target.
+   */
+  private solveLimb(a: number, rootX: number, rootY: number, tx: number, ty: number, bend: number) {
+    const p = this.particles
+    const n = p.jointsPerAppendage
+    const X: number[] = []
+    const Y: number[] = []
+    for (let j = 0; j < n; j++) {
+      X.push(p.posX[p.indexOf(a, j)])
+      Y.push(p.posY[p.indexOf(a, j)])
+    }
+    const dx = tx - rootX
+    const dy = ty - rootY
+    const dist = Math.hypot(dx, dy)
+    const reach = this.chainLen[a] * 0.985
+    let gx = tx
+    let gy = ty
+    if (dist > reach) {
+      gx = rootX + (dx / dist) * reach
+      gy = rootY + (dy / dist) * reach
+    }
+    for (let pass = 0; pass < 2; pass++) {
+      X[n - 1] = gx
+      Y[n - 1] = gy
+      for (let j = n - 2; j >= 0; j--) {
+        const r = this.restLengths[p.indexOf(a, j + 1)]
+        const vx = X[j] - X[j + 1]
+        const vy = Y[j] - Y[j + 1]
+        const l = Math.hypot(vx, vy) || 1
+        X[j] = X[j + 1] + (vx / l) * r
+        Y[j] = Y[j + 1] + (vy / l) * r
+      }
+      X[0] = rootX
+      Y[0] = rootY
+      for (let j = 1; j < n; j++) {
+        const r = this.restLengths[p.indexOf(a, j)]
+        const vx = X[j] - X[j - 1]
+        const vy = Y[j] - Y[j - 1]
+        const l = Math.hypot(vx, vy) || 1
+        X[j] = X[j - 1] + (vx / l) * r
+        Y[j] = Y[j - 1] + (vy / l) * r
+      }
+    }
+    if (bend !== 0) {
+      // Smitner pattern (user repo 2026-07-21): TRAVELING perpendicular
+      // wave along the chain, re-constrained afterwards — flowing organic
+      // curvature instead of a static bend lobe
+      const bx = gx - rootX
+      const by = gy - rootY
+      const bl = Math.hypot(bx, by) || 1
+      const px2 = -by / bl
+      const py2 = bx / bl
+      const d2 = this.drivers[a]
+      for (let j = 1; j < n - 1; j++) {
+        const t = j / (n - 1)
+        const w = Math.sin(t * Math.PI * 1.7 + this.time * (0.5 + d2.curlFreq * 3) * Math.PI + d2.curlPhase) * Math.sin(t * Math.PI)
+        X[j] += px2 * w * bend
+        Y[j] += py2 * w * bend
+      }
+      X[0] = rootX
+      Y[0] = rootY
+      for (let j = 1; j < n; j++) {
+        const r = this.restLengths[p.indexOf(a, j)]
+        const vx = X[j] - X[j - 1]
+        const vy = Y[j] - Y[j - 1]
+        const l = Math.hypot(vx, vy) || 1
+        X[j] = X[j - 1] + (vx / l) * r
+        Y[j] = Y[j - 1] + (vy / l) * r
+      }
+    }
+    if (this.obstacles.length) {
+      for (let j = 0; j < n - 1; j++) {
+        const mx = (X[j] + X[j + 1]) / 2
+        const my = (Y[j] + Y[j + 1]) / 2
+        const dm = sdObstacles(mx, my, this.obstacles, this.obstacleRounding)
+        if (dm < 0) {
+          obstacleNormal(mx, my, this.obstacles, this.obstacleRounding, this.normal2)
+          X[j] -= this.normal2.x * dm
+          Y[j] -= this.normal2.y * dm
+          X[j + 1] -= this.normal2.x * dm
+          Y[j + 1] -= this.normal2.y * dm
+        }
+      }
+    }
+    for (let j = 0; j < n; j++) {
+      const i = p.indexOf(a, j)
+      p.posX[i] = X[j]
+      p.posY[i] = Y[j]
+      p.prevX[i] = X[j]
+      p.prevY[i] = Y[j]
+    }
+  }
+
+  /* ---------------- step ---------------- */
+
   step(dt: number) {
     const p = this.particles
     const cfg = this.config
     this.time += dt
-    // irregular breathing: two incommensurate slow sines (§19: 4–9s period)
     this.breathePhase += (dt * Math.PI * 2) / 6.4
     this.breathePhase2 += (dt * Math.PI * 2) / 9.7
 
-    /* ---- forces / drivers (velocity via Verlet position delta) ---- */
-    const damping = cfg.simulation.damping
-    for (let i = 0; i < p.count; i++) {
-      if (i === 1) continue // attention node is kinematic (no velocity)
-      const vx = (p.posX[i] - p.prevX[i]) * damping
-      const vy = (p.posY[i] - p.prevY[i]) * damping
-      p.prevX[i] = p.posX[i]
-      p.prevY[i] = p.posY[i]
-      p.posX[i] += vx
-      p.posY[i] += vy
+    /* core Verlet (the only dynamic particle) */
+    {
+      const vx = (p.posX[0] - p.prevX[0]) * cfg.simulation.damping
+      const vy = (p.posY[0] - p.prevY[0]) * cfg.simulation.damping
+      p.prevX[0] = p.posX[0]
+      p.prevY[0] = p.posY[0]
+      p.posX[0] += vx
+      p.posY[0] += vy
     }
 
-    // pointer smoothing (halfLife ~0.12s position — handoff §17)
+    /* pointer smoothing: fast (attention) + slow strategic (body) */
     if (this.pointerActive) {
       if (!this.pointerInit) {
         this.pointerX = this.pointerRawX
@@ -167,7 +365,6 @@ export class OrganismSimulation {
         this.slowPY = this.pointerRawY
         this.pointerInit = true
         this.pointerRampStart = this.time
-        // attention snaps to its start — no cross-screen fly-in
         p.posX[1] = this.pointerRawX
         p.posY[1] = this.pointerRawY
         p.prevX[1] = p.posX[1]
@@ -176,16 +373,9 @@ export class OrganismSimulation {
       const k = 1 - Math.exp((-dt / 0.12) * Math.LN2)
       this.pointerX += (this.pointerRawX - this.pointerX) * k
       this.pointerY += (this.pointerRawY - this.pointerY) * k
-      // slow strategic pointer: the BODY reacts to sustained intent only —
-      // fast flicks whip nothing but the attention node (anti-spaghetti)
       const ks = 1 - Math.exp((-dt / 0.45) * Math.LN2)
       this.slowPX += (this.pointerX - this.slowPX) * ks
       this.slowPY += (this.pointerY - this.slowPY) * ks
-    }
-
-    // attention node: kinematic, critically damped — tracks without ever
-    // orbiting/flinging around the target (user 2026-07-21)
-    if (this.pointerActive) {
       const at = this.reachableTowards(p.posX[0], p.posY[0], this.pointerX, this.pointerY, 0.02)
       const ak = 1 - Math.exp((-dt / 0.18) * Math.LN2)
       p.posX[1] += (at.x - p.posX[1]) * ak
@@ -194,22 +384,20 @@ export class OrganismSimulation {
       p.prevY[1] = p.posY[1]
     }
 
-    // surface probe first — intention + corner-following both need it
+    /* surface frame (smoothed — no face-flip thrash) */
     const sd = this.surfaceDist(p.posX[0], p.posY[0])
     const inRange = sd < this.maxReach * 1.05
     const nRaw = this.surfaceNormalInto(p.posX[0], p.posY[0], this.normal)
-    // smooth the normal: near-equidistant faces flip the raw gradient and
-    // thrash roles/plants — the creature re-orients, it never snaps
     const nk = Math.min(1, dt * 2.5)
     this.smNX += (nRaw.x - this.smNX) * nk
     this.smNY += (nRaw.y - this.smNY) * nk
     const nl = Math.hypot(this.smNX, this.smNY) || 1
     const surfNX = this.smNX / nl
     const surfNY = this.smNY / nl
+    const tangX = -surfNY
+    const tangY = surfNX
 
-    // core intention: idle orbit around the anchor; when the pointer is
-    // present and outside a dead zone, lean toward a point short of it —
-    // interested, never cursor-glued (§17/§23)
+    /* strategic goal */
     let ix = this.anchorX
     let iy = this.anchorY
     let pointerDirX = 0
@@ -221,22 +409,14 @@ export class OrganismSimulation {
       if (dist > 0.05) {
         pointerDirX = dx / dist
         pointerDirY = dy / dist
-        // ramp interest over 1.5s after first pointer contact — the load
-        // moment must not yank the creature across the page
         const ramp = this.pointerRampStart < 0 ? 0 : Math.min(1, (this.time - this.pointerRampStart) / 1.5)
-        const interest = this.config.behavior.pointerInterest * ramp
-        // goal = the pointer ITSELF (stable — a core-relative offset orbits
-        // as the body moves and side-flips routes); stopping short is an
-        // ARRIVAL RADIUS at the core-move stage
+        const interest = cfg.behavior.pointerInterest * ramp
         ix = ix * (1 - interest) + this.slowPX * interest
         iy = iy * (1 - interest) + this.slowPY * interest
       }
     }
-    // torso needs real clearance — a pocket tighter than the body is not a
-    // destination (reachability-lite; M8 A* replaces this)
-    // M8 routing: A* on demand (goal moved / layout changed / stale) —
-    // never per frame (§21); the route feeds the intention, it does not
-    // animate the body directly
+
+    /* hunger watchdog */
     this.sniffing = false
     let finalGoalDist = -1
     let starved = false
@@ -244,23 +424,23 @@ export class OrganismSimulation {
       const dNow = Math.hypot(this.pointerX - p.posX[0], this.pointerY - p.posY[0])
       if (dNow < this.lastPointerDist - 0.015) this.lastProgressTime = this.time
       this.lastPointerDist = dNow
-      // mosquito rule (user 2026-07-21): far from the cursor and not
-      // closing for 2s → find another way in
       starved = dNow > 0.25 && this.time - this.lastProgressTime > 2
     } else {
       this.lastPointerDist = Infinity
     }
+
+    /* routing (on demand, with route memory) */
     if (this.nav) {
       const pts0 = this.route?.points ?? []
       const exhaustedFar = this.route !== null && this.routeIdx >= pts0.length && Math.hypot(ix - p.posX[0], iy - p.posY[0]) > 0.12
       const stale =
         !this.route ||
-        Math.hypot(ix - this.routeGoalX, iy - this.routeGoalY) > Math.max(this.config.navigation.rerouteThreshold, 0.15) ||
+        Math.hypot(ix - this.routeGoalX, iy - this.routeGoalY) > Math.max(cfg.navigation.rerouteThreshold, 0.15) ||
         exhaustedFar ||
         (starved && this.time - this.lastRouteTime > 2) ||
         this.time - this.lastRouteTime > 6
       if (stale) {
-        if (starved) this.lastProgressTime = this.time // one shot per stall
+        if (starved) this.lastProgressTime = this.time
         this.route = this.nav.route(p.posX[0], p.posY[0], ix, iy, this.hasLOS, this.route?.points)
         this.routeGoalX = ix
         this.routeGoalY = iy
@@ -270,47 +450,20 @@ export class OrganismSimulation {
       const pts = this.route!.points
       while (this.routeIdx < pts.length && Math.hypot(pts[this.routeIdx].x - p.posX[0], pts[this.routeIdx].y - p.posY[0]) < 0.1) this.routeIdx++
       if (this.routeIdx < pts.length) {
-        finalGoalDist = Math.hypot(ix - p.posX[0], iy - p.posY[0]) // before waypoint override
+        finalGoalDist = Math.hypot(ix - p.posX[0], iy - p.posY[0])
         ix = pts[this.routeIdx].x
         iy = pts[this.routeIdx].y
       }
-      // unreachable goal + arrived near route end → sniff at it (§21.3)
       if (this.route!.goalUnreachable && this.pointerActive) {
         const end = pts.length ? pts[pts.length - 1] : { x: p.posX[0], y: p.posY[0] }
         if (Math.hypot(end.x - p.posX[0], end.y - p.posY[0]) < 0.16) this.sniffing = true
       }
     }
-    if (Math.hypot(ix - p.posX[0], iy - p.posY[0]) < 0.1) {
-      ix += Math.sin(this.time * 0.05 + 1.7) * 0.03 + Math.sin(this.time * 0.023) * 0.02
-      iy += Math.cos(this.time * 0.041 + 0.4) * 0.025 + Math.sin(this.time * 0.017 + 2.1) * 0.018
-    }
-    const followingRoute = this.route !== null && this.routeIdx < this.route.points.length
-    let rawTarget = followingRoute
-      ? { x: ix, y: iy } // A* already vetted clearance cell-wise — trust it
-      : this.reachableTowards(p.posX[0], p.posY[0], ix, iy, p.radius[0] * 1.15)
-    // corner following (until M8 A*): if the straight ray is blocked but the
-    // desire is far, walk along the wall tangent toward it — the creature
-    // rounds corners instead of idling at them
-    const desireDist = Math.hypot(ix - p.posX[0], iy - p.posY[0])
-    const progress = Math.hypot(rawTarget.x - p.posX[0], rawTarget.y - p.posY[0])
-    const routeActive = this.route !== null && this.routeIdx < (this.route.points.length ?? 0)
-    if (desireDist > 0.12 && progress < 0.03 && inRange && !routeActive) {
-      const sign = -surfNY * (ix - p.posX[0]) + surfNX * (iy - p.posY[0]) >= 0 ? 1 : -1
-      rawTarget = this.reachableTowards(
-        p.posX[0],
-        p.posY[0],
-        p.posX[0] - surfNY * sign * 0.22,
-        p.posY[0] + surfNX * sign * 0.22,
-        p.radius[0] * 1.2,
-      )
-    }
-    // ease the effective target: losing line of sight must not snap the
-    // destination (user 2026-07-21) — the body drifts, never jerks
+
+    /* intention smoothing + shell projection (no flight) */
     const tk = 1 - Math.exp((-dt / 0.55) * Math.LN2)
-    this.intentX += (rawTarget.x - this.intentX) * tk
-    this.intentY += (rawTarget.y - this.intentY) * tk
-    // NO FLIGHT (user 2026-07-21): destinations live on the hover shell
-    // around surfaces — far targets become "crawl along the wall toward it"
+    this.intentX += (ix - this.intentX) * tk
+    this.intentY += (iy - this.intentY) * tk
     const shellBand = this.maxReach * 0.34
     const tsd = this.surfaceDist(this.intentX, this.intentY)
     if (tsd > shellBand) {
@@ -319,44 +472,34 @@ export class OrganismSimulation {
       this.intentX -= this.normal2.x * pullIn
       this.intentY -= this.normal2.y * pullIn
     }
-    const target = { x: this.intentX, y: this.intentY }
-    // travel INTENT only — the body does not self-propel; planted feet
-    // pull it (gait causality, user 2026-07-21: walker, not dragged jelly)
-    const maxStep = this.config.behavior.maximumCoreSpeed * this.viewportAspect * dt
-    const tdx = target.x - p.posX[0]
-    const tdy = target.y - p.posY[0]
+    const tdx = this.intentX - p.posX[0]
+    const tdy = this.intentY - p.posY[0]
     const tlen = Math.hypot(tdx, tdy)
-    // arrival radius vs the FINAL goal — judging it against the current
-    // waypoint deadlocked the gait when a waypoint sat inside the radius
     const goalDist = finalGoalDist >= 0 ? finalGoalDist : tlen
     const moving = goalDist > (this.pointerActive ? 0.13 : 0.05)
+    const travelDirX = moving && tlen > 1e-4 ? tdx / tlen : 0
+    const travelDirY = moving && tlen > 1e-4 ? tdy / tlen : 0
     this.dbgMoving = moving
     this.dbgGoalDist = goalDist
+    this.dbgTravel = [travelDirX, travelDirY]
     if (this.state === 'pursue' && goalDist < this.pursueBestDist - 0.02) {
       this.pursueBestDist = goalDist
       this.pursueBestAt = this.time
     }
 
-    // ---- state transitions (min durations + hysteresis, §18/§24) ----
+    /* state transitions (min durations + hysteresis) */
     const inState = this.time - this.stateSince
     if (this.state !== 'jump') {
       if (this.sniffing && this.state !== 'sniff') this.setState('sniff')
       else if (this.state === 'rest' && goalDist > 0.3 && inState > 1.5) this.setState('pursue')
       else if (this.state === 'pursue' && goalDist < 0.14 && inState > 1) this.setState('settle')
-      else if (this.state === 'pursue' && inState > 1 && this.time - this.pursueBestAt > 2.5) {
-        // Withdraw-lite (§18): no progress for 2.5s → stop dancing at the
-        // wall, settle where we are — feet freeze, body sways organically
-        this.setState('settle')
-      }
+      else if (this.state === 'pursue' && inState > 1 && this.time - this.pursueBestAt > 2.5) this.setState('settle')
       else if (this.state === 'settle' && inState > 1) this.setState('rest')
       else if ((this.state === 'settle' || this.state === 'sniff') && goalDist > 0.35 && !this.sniffing) this.setState('pursue')
-      // jump trigger: the next waypoint leaves the surface shell — the one
-      // sanctioned no-fly exception (user 2026-07-21): ballistic hop to the
-      // next on-shell point of the route
       if (this.state === 'pursue' && this.route && this.routeIdx < this.route.points.length) {
         const wp = this.route.points[this.routeIdx]
         if (this.surfaceDist(wp.x, wp.y) > this.maxReach * 0.6) {
-          let land: { x: number; y: number } | null = null
+          let land: Vec2 | null = null
           for (let k = this.routeIdx; k < this.route.points.length; k++) {
             const c = this.route.points[k]
             if (this.surfaceDist(c.x, c.y) <= this.maxReach * 0.45) {
@@ -366,14 +509,10 @@ export class OrganismSimulation {
           }
           if (!land) {
             const g = this.route.points[this.route.points.length - 1]
-            const gn = this.surfaceNormalInto(g.x, g.y, this.normal2)
-            const gd = this.surfaceDist(g.x, g.y)
-            land = { x: g.x - gn.x * (gd - this.maxReach * 0.3), y: g.y - gn.y * (gd - this.maxReach * 0.3) }
+            land = this.projectToSurface(g.x, g.y, this.maxReach * 0.3)
           }
           const gap = Math.hypot(land.x - p.posX[0], land.y - p.posY[0])
           const landSane = land.x > 0.02 && land.x < this.viewportAspect - 0.02 && land.y > 0.02 && land.y < 0.98
-          // obstacles are SOLID: the arc itself must be clear — a jump is
-          // never a license to pass through geometry (user 2026-07-21)
           let arcClear = true
           if (this.obstacles.length) {
             const upx0 = -(land.y - p.posY[0])
@@ -397,413 +536,117 @@ export class OrganismSimulation {
             this.jumpDur = Math.max(0.35, gap / 0.5)
             this.jumpT = 0
             for (const pl of this.plants) pl.active = false
+            for (const sw of this.swings) sw.active = false
             this.setState('jump')
           }
         }
       }
     }
     const S = this.state
-    const travelDirX = moving ? tdx / tlen : 0
-    const travelDirY = moving ? tdy / tlen : 0
-    this.dbgTravel = [travelDirX, travelDirY]
 
-    // ---- surface rest + planting (walking substrate — §20/§22) ----
-    if (this.state !== 'jump') {
-      // carry height breathes slowly, crouches while moving; spring is
-      // ALWAYS on (clamped) — detached bodies sink to the nearest surface
-      const speedNorm = Math.min(1, Math.hypot(this.coreVelX, this.coreVelY) / 0.08)
-      const dip = 0.08 * Math.exp(-(this.time - this.lastPlantTime) / 0.35)
-      const hover = this.maxReach * (0.3 + Math.sin(this.time * 0.11 * Math.PI * 2 + 0.7) * 0.06 - speedNorm * 0.08 - dip)
-      let anyPlant = false
-      for (const pl of this.plants) if (pl.active) { anyPlant = true; break }
-      const clampE = anyPlant ? 0.05 : 0.14
-      const gainE = anyPlant ? 1.6 : 3.2
-      const err = Math.max(-clampE, Math.min(clampE, sd - hover))
-      p.posX[0] -= surfNX * err * Math.min(1, dt * gainE)
-      p.posY[0] -= surfNY * err * Math.min(1, dt * gainE)
-    }
-    // role-based anatomy (user 2026-07-21): first 3 limbs are WALKERS that
-    // hang toward the surface, the rest are UPPER tentacles — rest angles
-    // slowly reorganize around the surface normal, so the same rig walks
-    // floors, walls and obstacle edges without ever reading as a starfish
+    /* role angles reorganize around the surface */
     const downAngle = Math.atan2(-surfNY, -surfNX)
     const upAngle = Math.atan2(surfNY, surfNX)
     const WALKER_SPREAD = [-0.9, 0, 0.9]
     const UPPER_SPREAD = [-0.6, 0, 0.6]
     for (let a = 0; a < p.appendageCount; a++) {
       const d = this.drivers[a]
-      const isWalker = a < 3
-      const want = inRange
-        ? isWalker
-          ? downAngle + WALKER_SPREAD[a % 3]
-          : upAngle + UPPER_SPREAD[(a - 3) % 3]
-        : d.restAngle
+      const want = inRange ? (a < LEGS ? downAngle + WALKER_SPREAD[a % 3] : upAngle + UPPER_SPREAD[(a - LEGS) % 3]) : d.restAngle
       let delta = want - d.restAngle
       while (delta > Math.PI) delta -= Math.PI * 2
       while (delta < -Math.PI) delta += Math.PI * 2
       d.restAngle += delta * Math.min(1, dt * 0.8)
     }
-    const wantPlant = new Set<number>()
-    if (inRange) for (let a = 0; a < Math.min(3, p.appendageCount); a++) wantPlant.add(a)
-    // stride clock: while traveling, the most-behind planted foot lifts
-    // every ~0.55s and re-plants ahead — visible stepping, not dragging
-    if (S === 'pursue' && moving && this.time - this.lastReleaseTime > 0.55) {
-      let worst = -1
-      let worstDot = Infinity
-      for (let a = 0; a < Math.min(3, p.appendageCount); a++) {
+
+    /* ---- core motion ---- */
+    if (S === 'jump') {
+      this.jumpT += dt / this.jumpDur
+      const t01 = Math.min(1, this.jumpT)
+      const ease = t01 * t01 * (3 - 2 * t01)
+      const upx = -(this.jumpEY - this.jumpSY)
+      const upy = this.jumpEX - this.jumpSX
+      const ul = Math.hypot(upx, upy) || 1
+      const arc = Math.sin(t01 * Math.PI) * 0.12 * Math.hypot(this.jumpEX - this.jumpSX, this.jumpEY - this.jumpSY)
+      p.posX[0] = this.jumpSX + (this.jumpEX - this.jumpSX) * ease + (upx / ul) * arc
+      p.posY[0] = this.jumpSY + (this.jumpEY - this.jumpSY) * ease + (upy / ul) * arc
+      p.prevX[0] = p.posX[0]
+      p.prevY[0] = p.posY[0]
+      if (t01 >= 1) this.setState('pursue')
+    } else {
+      if (S === 'pursue' && tlen > 0.015) {
+        let planted = 0
+        let sumX = 0
+        let sumY = 0
+        for (let a = 0; a < LEGS; a++) {
+          const pl = this.plants[a]
+          if (!pl.active) continue
+          planted++
+          sumX += pl.x
+          sumY += pl.y
+        }
+        const maxStep = cfg.behavior.maximumCoreSpeed * this.viewportAspect * dt
+        if (planted > 0) {
+          const surge = this.time < this.surgeUntil
+          const gain = surge ? 3.2 : 1.6
+          const pullX = sumX / planted + travelDirX * this.maxReach * 0.5
+          const pullY = sumY / planted + travelDirY * this.maxReach * 0.5
+          let mx = (pullX - p.posX[0]) * Math.min(1, dt * gain)
+          let my = (pullY - p.posY[0]) * Math.min(1, dt * gain)
+          const mlen = Math.hypot(mx, my)
+          const cap = maxStep * 1.35
+          if (mlen > cap) {
+            mx = (mx / mlen) * cap
+            my = (my / mlen) * cap
+          }
+          p.posX[0] += mx
+          p.posY[0] += my
+        } else {
+          p.posX[0] += travelDirX * maxStep * 0.35
+          p.posY[0] += travelDirY * maxStep * 0.35
+        }
+      }
+      {
+        let anyPlant = false
+        for (const pl of this.plants) if (pl.active) anyPlant = true
+        const speedNorm = Math.min(1, Math.hypot(this.coreVelX, this.coreVelY) / 0.08)
+        const dip = 0.08 * Math.exp(-(this.time - this.lastPlantTime) / 0.35)
+        const hover = this.maxReach * (0.3 + Math.sin(this.time * 0.11 * Math.PI * 2 + 0.7) * 0.06 - speedNorm * 0.08 - dip)
+        const clampE = anyPlant ? 0.05 : 0.14
+        const gainE = anyPlant ? 1.6 : 3.2
+        const err = Math.max(-clampE, Math.min(clampE, sd - hover))
+        p.posX[0] -= surfNX * err * Math.min(1, dt * gainE)
+        p.posY[0] -= surfNY * err * Math.min(1, dt * gainE)
+      }
+      if (this.obstacles.length) {
+        const d0 = sdObstacles(p.posX[0], p.posY[0], this.obstacles, this.obstacleRounding) - p.radius[0]
+        if (d0 < 0) {
+          obstacleNormal(p.posX[0], p.posY[0], this.obstacles, this.obstacleRounding, this.normal2)
+          p.posX[0] -= this.normal2.x * d0
+          p.posY[0] -= this.normal2.y * d0
+        }
+        const comfort = cfg.obstacles.comfortClearance
+        const dc = sdObstacles(p.posX[0], p.posY[0], this.obstacles, this.obstacleRounding) - p.radius[0]
+        if (dc >= 0 && dc < comfort) {
+          obstacleNormal(p.posX[0], p.posY[0], this.obstacles, this.obstacleRounding, this.normal2)
+          const push = (1 - dc / comfort) * 0.0015
+          p.posX[0] += this.normal2.x * push
+          p.posY[0] += this.normal2.y * push
+        }
+      }
+      for (let a = 0; a < LEGS; a++) {
         const pl = this.plants[a]
         if (!pl.active) continue
-        const dot = (pl.x - p.posX[0]) * travelDirX + (pl.y - p.posY[0]) * travelDirY
-        if (dot < worstDot) {
-          worstDot = dot
-          worst = a
-        }
-      }
-      this.dbgStride = 'worst=' + worst + ' dot=' + (worstDot === Infinity ? 'inf' : worstDot.toFixed(3))
-      if (worst >= 0 && worstDot < this.chainLen[worst] * 0.45) {
-        this.plants[worst].active = false
-        this.lastReleaseTime = this.time
-        this.dbgReleases++
-      }
-    }
-
-    // settle-stance optimizer: before freezing into rest, make sure at
-    // least two feet stand acceptably wide — release the most central
-    // plant so it re-lands on a wide slot (one per 0.4s)
-    if (S === 'settle' && inRange && this.time - this.lastReleaseTime > 0.4) {
-      const tX = -surfNY
-      const tY = surfNX
-      const act: Array<{ a: number; proj: number }> = []
-      for (let a = 0; a < Math.min(3, p.appendageCount); a++) {
-        const pl = this.plants[a]
-        if (pl.active) act.push({ a, proj: (pl.x - p.posX[0]) * tX + (pl.y - p.posY[0]) * tY })
-      }
-      if (act.length >= 2) {
-        const spread = Math.max(...act.map((x) => x.proj)) - Math.min(...act.map((x) => x.proj))
-        if (spread < this.chainLen[0] * 0.7) {
-          act.sort((x, y) => Math.abs(x.proj) - Math.abs(y.proj))
-          this.plants[act[0].a].active = false
-          this.lastReleaseTime = this.time
-          this.dbgReleases++
+        const dx = p.posX[0] - pl.x
+        const dy = p.posY[0] - pl.y
+        const dd = Math.hypot(dx, dy)
+        const lim = this.chainLen[a] * 1.25 + p.radius[0]
+        if (dd > lim) {
+          p.posX[0] = pl.x + (dx / dd) * lim
+          p.posY[0] = pl.y + (dy / dd) * lim
         }
       }
     }
-
-    for (let a = 0; a < p.appendageCount; a++) {
-      const plant = this.plants[a]
-      const rootI = p.indexOf(a, 0)
-      if (plant.active && !this.bridgeClear(p.posX[rootI], p.posY[rootI], plant.x, plant.y)) {
-        // root→plant crosses a boundary — the press-cut would sever the
-        // limb and leave a floating foot bubble; let go instead
-        plant.active = false
-      }
-      if (plant.active) {
-        const stretch = Math.hypot(plant.x - p.posX[rootI], plant.y - p.posY[rootI])
-        // release when overstretched or misaligned — but stagger releases
-        // (one foot at a time = walk rhythm, not scramble)
-        const may = this.time - this.lastReleaseTime > 0.45
-        // EMERGENCY: badly overstretched grips let go immediately — a tip
-        // pinned across an obstacle bridges the body through it (B14)
-        const gaitRelease = S === 'pursue' && stretch > this.chainLen[a] * 1.06 && may
-        if (stretch > this.chainLen[a] * 1.3 || (S === 'pursue' && !wantPlant.has(a)) || gaitRelease) {
-          plant.active = false
-          this.lastReleaseTime = this.time
-          this.dbgReleases++
-        }
-      }
-      if (!plant.active && wantPlant.has(a) && (S === 'pursue' || S === 'settle' || (S === 'rest' && inState < 0.3))) {
-        // plant ahead of travel: tip projected onto the surface with a lead
-        // along the tangent in the movement direction
-        const tangX = -surfNY
-        const tangY = surfNX
-        // traveling: the new footfall originates at the ROOT and lands a
-        // real stride ahead; idle: wide stable stance
-        let tx: number
-        let ty: number
-        // per-leg landing slots — identical leads bunched 2-3 feet onto
-        // the same spot (user 2026-07-21)
-        const SLOT = [-0.55, 0, 0.55]
-        if (moving) {
-          const sgn = Math.sign(tangX * travelDirX + tangY * travelDirY || 1)
-          const lead = [0.55, 0.8, 0.65][a % 3]
-          tx = p.posX[rootI] + tangX * (sgn * this.chainLen[a] * lead + SLOT[a % 3] * this.chainLen[a] * 0.5)
-          ty = p.posY[rootI] + tangY * (sgn * this.chainLen[a] * lead + SLOT[a % 3] * this.chainLen[a] * 0.5)
-        } else {
-          tx = p.posX[rootI] + tangX * SLOT[a % 3] * this.chainLen[a] * 1.15
-          ty = p.posY[rootI] + tangY * SLOT[a % 3] * this.chainLen[a] * 1.15
-        }
-        for (let it = 0; it < 3; it++) {
-          const td = this.surfaceDist(tx, ty)
-          this.surfaceNormalInto(tx, ty, this.normal)
-          tx -= this.normal.x * td
-          ty -= this.normal.y * td
-        }
-        // stand ON the surface, not IN it — a pad centered on the boundary
-        // gets halved by the press-cut and reads as a floating bubble
-        const tipR = p.radius[p.indexOf(a, p.jointsPerAppendage - 1)]
-        tx += this.normal.x * tipR * 1.2
-        ty += this.normal.y * tipR * 1.2
-        // minimum foot separation: nudge along the tangent away from the
-        // nearest existing plant until clear (max 2 nudges)
-        for (let tries = 0; tries < 2; tries++) {
-          let tooClose = false
-          for (let o = 0; o < Math.min(4, p.appendageCount); o++) {
-            if (o === a || !this.plants[o].active) continue
-            if (Math.hypot(this.plants[o].x - tx, this.plants[o].y - ty) < this.chainLen[a] * 0.4) {
-              tooClose = true
-              break
-            }
-          }
-          if (!tooClose) break
-          tx += tangX * this.chainLen[a] * 0.35 * (a < 2 ? -1 : 1)
-          ty += tangY * this.chainLen[a] * 0.35 * (a < 2 ? -1 : 1)
-        }
-        let stillClose = false
-        for (let o = 0; o < Math.min(4, p.appendageCount); o++) {
-          if (o === a || !this.plants[o].active) continue
-          if (Math.hypot(this.plants[o].x - tx, this.plants[o].y - ty) < this.chainLen[a] * 0.35) {
-            stillClose = true
-            break
-          }
-        }
-        if (!stillClose && Math.hypot(tx - p.posX[rootI], ty - p.posY[rootI]) < this.chainLen[a] && this.bridgeClear(p.posX[rootI], p.posY[rootI], tx, ty)) {
-          plant.x = tx
-          plant.y = ty
-          plant.active = true
-          this.lastPlantTime = this.time
-          this.surgeUntil = this.time + 0.32 // weight transfer window
-        }
-      }
-    }
-
-    // limbs: serpentine traveling wave along the chain (anatomy-aligned,
-    // per-limb seeded — §15.2); planted limbs grip their anchor, the limb
-    // best aligned with the pointer extends toward it, others trail
-    for (let a = 0; a < p.appendageCount; a++) {
-      const d = this.drivers[a]
-      const calm = S === 'rest' || S === 'settle' ? 0.45 : 1
-      const sway = Math.sin(this.time * d.swayFreq * Math.PI * 2 + d.swayPhase) * d.swayAmp * calm
-      let targetAngle = d.restAngle + sway * 0.45
-      let reachScale = 1
-      // seekers with a good stance SEARCH: slow seeded sweeping arcs with
-      // reach pulses — purpose, not an idle sine flop (user 2026-07-21)
-      if (a >= 3 && (S === 'rest' || S === 'settle')) {
-        const sweep = Math.sin(this.time * (0.05 + (a - 3) * 0.021) * Math.PI * 2 + a * 2.6) * 1.1
-        targetAngle += sweep
-        reachScale *= 1 + Math.max(0, Math.sin(this.time * 0.09 * Math.PI * 2 + a * 1.7)) * 0.3
-      }
-      // walkers (a<3) keep their feet — only UPPER tentacles reach for the
-      // pointer, stretching MORE when it is farther away (planted reach-out,
-      // user 2026-07-21)
-      if (a >= 3 && this.pointerActive && (pointerDirX !== 0 || pointerDirY !== 0)) {
-        const pointerAngle = Math.atan2(pointerDirY, pointerDirX)
-        let delta = pointerAngle - d.restAngle
-        while (delta > Math.PI) delta -= Math.PI * 2
-        while (delta < -Math.PI) delta += Math.PI * 2
-        const align = Math.max(0, Math.cos(delta))
-        const dx0 = this.slowPX - p.posX[0]
-        const dy0 = this.slowPY - p.posY[0]
-        const farness = Math.min(1, Math.hypot(dx0, dy0) / 0.5)
-        const bias = align * align * (0.3 + 0.7 * farness)
-        targetAngle += delta * 0.7 * bias
-        reachScale = Math.min(1.35, 1 + bias * 1.1)
-        if (this.sniffing) {
-          // grasp toward thin air: slow per-tendril wobble + reach pulsing —
-          // intentional sniffing, not stiff pointing (user 2026-07-21)
-          targetAngle += Math.sin(this.time * 0.32 * Math.PI * 2 + a * 2.1) * 0.22
-          reachScale *= 1.12 + Math.sin(this.time * 0.47 * Math.PI * 2 + a * 1.4) * 0.14
-        }
-      }
-      const rootI = p.indexOf(a, 0)
-      const plant = this.plants[a]
-      const tipIdx = p.jointsPerAppendage - 1
-
-      // free LEGS reach for the ground (user 2026-07-21): chain curves
-      // along an arc from root to its footfall candidate — legs curve down
-      // and plant; they never wave at angular slots in open space
-      if (a < 3 && !plant.active && inRange) {
-        const tangX2 = -surfNY
-        const tangY2 = surfNX
-        const SLOT2 = [-0.55, 0, 0.55]
-        let fx = p.posX[rootI] + tangX2 * SLOT2[a % 3] * this.chainLen[a] * 1.15
-        let fy = p.posY[rootI] + tangY2 * SLOT2[a % 3] * this.chainLen[a] * 1.15
-        for (let it = 0; it < 2; it++) {
-          const fd = this.surfaceDist(fx, fy)
-          this.surfaceNormalInto(fx, fy, this.normal2)
-          fx -= this.normal2.x * fd
-          fy -= this.normal2.y * fd
-        }
-        for (let j = 1; j < p.jointsPerAppendage; j++) {
-          const i = p.indexOf(a, j)
-          const t = j / tipIdx
-          const lift = Math.sin(t * Math.PI) * this.chainLen[a] * 0.22
-          const bx = p.posX[rootI] + (fx - p.posX[rootI]) * t + surfNX * lift
-          const by = p.posY[rootI] + (fy - p.posY[rootI]) * t + surfNY * lift
-          const kk = Math.min(1, dt * 3)
-          this.tgtX[i] += (bx - this.tgtX[i]) * kk
-          this.tgtY[i] += (by - this.tgtY[i]) * kk
-          p.posX[i] += (this.tgtX[i] - p.posX[i]) * Math.min(1, dt * 1.6)
-          p.posY[i] += (this.tgtY[i] - p.posY[i]) * Math.min(1, dt * 1.6)
-        }
-        continue
-      }
-      // segmented curving (user 2026-07-21): slowly evolving curl + S-bend
-      // accumulate along the chain — tentacles coil and wave, never spokes
-      const curl = Math.sin(this.time * d.curlFreq * Math.PI * 2 + d.curlPhase) * 1.4
-      const sBend = Math.sin(this.time * d.swayFreq * Math.PI * 2 + d.swayPhase + 1.3) * 1.1
-      let cx = p.posX[rootI]
-      let cy = p.posY[rootI]
-      for (let j = 1; j < p.jointsPerAppendage; j++) {
-        const i = p.indexOf(a, j)
-        const t = j / tipIdx
-        if (plant.active) {
-          // gripping limb: tip locks to the plant, mid joints relax into a
-          // catenary-ish sag between root and plant (wave damped)
-          if (j === tipIdx) {
-            p.posX[i] += (plant.x - p.posX[i]) * Math.min(1, dt * 16)
-            p.posY[i] += (plant.y - p.posY[i]) * Math.min(1, dt * 16)
-          }
-          // mid joints of planted limbs: NO driven target — root glue +
-          // tip lock + segment/bend constraints settle into a still
-          // catenary. A competing bridge target made the solver correct
-          // it every frame = permanent limit-cycle jiggle (user 2026-07-21).
-          // The snake wave is applied render-side in writeUniforms.
-          continue
-        }
-        // free limb: uppers undulate (curl + S-bend + wave); walker LEGS
-        // stay quiet — they hold or they step, they don't wiggle
-        const isLeg = a < 3
-        const wave = isLeg ? 0 : Math.sin(t * 2.8 + d.curlPhase + this.time * d.curlFreq * Math.PI * 2) * 0.12 * (0.3 + 0.7 * t)
-        const legCalm = isLeg ? 0.35 : 1
-        const desired = targetAngle + (curl * t + sBend * Math.sin(t * Math.PI)) * legCalm + wave
-        cx += Math.cos(desired) * this.restLengths[i] * reachScale
-        cy += Math.sin(desired) * this.restLengths[i] * reachScale
-        const raw = this.reachableTowards(p.posX[rootI], p.posY[rootI], cx, cy, p.radius[i])
-        // low-pass the target itself: reachableTowards quantizes to 1/8-ray
-        // steps near obstacles — raw hops must never reach the joints
-        const tk = Math.min(1, dt * 5)
-        this.tgtX[i] += (raw.x - this.tgtX[i]) * tk
-        this.tgtY[i] += (raw.y - this.tgtY[i]) * tk
-        const k = Math.min(1, 0.4 * dt * (0.3 + t))
-        p.posX[i] += (this.tgtX[i] - p.posX[i]) * k
-        p.posY[i] += (this.tgtY[i] - p.posY[i]) * k
-      }
-    }
-
-    /* ---- constraint projection ---- */
-    const iterations = cfg.simulation.constraintIterations
-    for (let it = 0; it < iterations; it++) {
-      // limb roots ride the torso surface at slowly migrating angles
-      for (let a = 0; a < p.appendageCount; a++) {
-        const d = this.drivers[a]
-        const drift = Math.sin(this.time * d.rootDriftFreq * Math.PI * 2) * d.rootDriftAmp
-        const ang = d.restAngle + drift
-        const root = p.indexOf(a, 0)
-        const rx = p.posX[0] + Math.cos(ang) * p.radius[0] * 0.6
-        const ry = p.posY[0] + Math.sin(ang) * p.radius[0] * 0.6
-        p.posX[root] += (rx - p.posX[root]) * 0.5
-        p.posY[root] += (ry - p.posY[root]) * 0.5
-      }
-
-      // segment length constraints along each limb
-      for (let a = 0; a < p.appendageCount; a++) {
-        for (let j = 0; j < p.jointsPerAppendage - 1; j++) {
-          const i0 = p.indexOf(a, j)
-          const i1 = p.indexOf(a, j + 1)
-          const dx = p.posX[i1] - p.posX[i0]
-          const dy = p.posY[i1] - p.posY[i0]
-          const len = Math.hypot(dx, dy) || 1e-6
-          const rest = this.restLengths[i1]
-          const diff = (len - rest) / len
-          const w0 = p.invMass[i0]
-          const w1 = p.invMass[i1]
-          const s = w0 + w1 || 1
-          p.posX[i0] += dx * diff * (w0 / s)
-          p.posY[i0] += dy * diff * (w0 / s)
-          p.posX[i1] -= dx * diff * (w1 / s)
-          p.posY[i1] -= dy * diff * (w1 / s)
-        }
-      }
-
-      // soft bend smoothing: joints ease toward neighbor midpoints
-      for (let a = 0; a < p.appendageCount; a++) {
-        for (let j = 1; j < p.jointsPerAppendage - 1; j++) {
-          const i0 = p.indexOf(a, j - 1)
-          const i1 = p.indexOf(a, j)
-          const i2 = p.indexOf(a, j + 1)
-          const mx = (p.posX[i0] + p.posX[i2]) / 2
-          const my = (p.posY[i0] + p.posY[i2]) / 2
-          p.posX[i1] += (mx - p.posX[i1]) * 0.12
-          p.posY[i1] += (my - p.posY[i1]) * 0.12
-        }
-      }
-
-      // hard obstacle projection: core must never clip protected DOM (V17)
-      if (this.obstacles.length) {
-        for (let i = 0; i < p.count; i++) {
-          const d = sdObstacles(p.posX[i], p.posY[i], this.obstacles, this.obstacleRounding) - p.radius[i]
-          if (d < 0) {
-            obstacleNormal(p.posX[i], p.posY[i], this.obstacles, this.obstacleRounding, this.normal)
-            p.posX[i] -= this.normal.x * d
-            p.posY[i] -= this.normal.y * d
-          }
-        }
-      }
-
-      // NOTE: no hard viewport clamp — the creature is page-anchored and may
-      // be scrolled out of view; the in-view anchor walks it back (§scroll)
-    }
-
-    this.enforceChainIntegrity()
-
-    // tip speed cap (§23/§24): free joints never exceed maximumTipSpeed —
-    // kills the "accelerates like crazy" whip
-    const maxTip = this.config.behavior.maximumTipSpeed * this.viewportAspect * dt
-    for (let a = 0; a < p.appendageCount; a++) {
-      if (this.plants[a].active) continue
-      for (let j = 1; j < p.jointsPerAppendage; j++) {
-        const i = p.indexOf(a, j)
-        const dx = p.posX[i] - p.prevX[i]
-        const dy = p.posY[i] - p.prevY[i]
-        const disp = Math.hypot(dx, dy)
-        if (disp > maxTip) {
-          const s = maxTip / disp
-          p.posX[i] = p.prevX[i] + dx * s
-          p.posY[i] = p.prevY[i] + dy * s
-        }
-      }
-    }
-
-    // anchor stays in view: after scrolling away, the creature has an
-    // in-viewport destination to walk back to (organic catch-up, no snap)
-    this.anchorX = Math.min(Math.max(this.anchorX, 0.14), this.viewportAspect - 0.14)
-    this.anchorY = Math.min(Math.max(this.anchorY, 0.14), 0.86)
-
-    // segment solidity: joints are projected individually, but a LINK can
-    // still straddle a corner — push straddling midpoints out and drag
-    // both endpoints along (obstacles are solid, no corner cutting)
-    if (this.obstacles.length) {
-      for (let a = 0; a < p.appendageCount; a++) {
-        for (let j = 0; j < p.jointsPerAppendage - 1; j++) {
-          const i0 = p.indexOf(a, j)
-          const i1 = p.indexOf(a, j + 1)
-          const mx = (p.posX[i0] + p.posX[i1]) / 2
-          const my = (p.posY[i0] + p.posY[i1]) / 2
-          const dm = sdObstacles(mx, my, this.obstacles, this.obstacleRounding)
-          if (dm < 0) {
-            obstacleNormal(mx, my, this.obstacles, this.obstacleRounding, this.normal)
-            p.posX[i0] -= this.normal.x * dm * 0.5
-            p.posY[i0] -= this.normal.y * dm * 0.5
-            p.posX[i1] -= this.normal.x * dm * 0.5
-            p.posY[i1] -= this.normal.y * dm * 0.5
-          }
-        }
-      }
-    }
-
-    // §24 hard guarantees — regardless of what any force computed:
-    // (a) the core never leaves the page neighborhood; (b) no particle
-    // moves more than 2% of the viewport in one step (anti-teleport)
+    /* §24 hard guarantees for the core */
     {
       const bx0 = -0.2
       const bx1 = this.viewportAspect + 0.2
@@ -815,279 +658,185 @@ export class OrganismSimulation {
         p.prevX[0] = p.posX[0]
         p.prevY[0] = p.posY[0]
       }
-      const maxDisp = 0.02
-      for (let i = 0; i < p.count; i++) {
-        const dx = p.posX[i] - p.prevX[i]
-        const dy = p.posY[i] - p.prevY[i]
-        const dd = Math.hypot(dx, dy)
-        if (dd > maxDisp) {
-          p.posX[i] = p.prevX[i] + (dx / dd) * maxDisp
-          p.posY[i] = p.prevY[i] + (dy / dd) * maxDisp
-        }
+      const dx = p.posX[0] - p.prevX[0]
+      const dy = p.posY[0] - p.prevY[0]
+      const dd = Math.hypot(dx, dy)
+      if (dd > 0.02) {
+        p.posX[0] = p.prevX[0] + (dx / dd) * 0.02
+        p.posY[0] = p.prevY[0] + (dy / dd) * 0.02
       }
     }
+    this.anchorX = Math.min(Math.max(this.anchorX, 0.14), this.viewportAspect - 0.14)
+    this.anchorY = Math.min(Math.max(this.anchorY, 0.14), 0.86)
 
-    // sleep threshold: microscopic displacements collapse to rest — the
-    // creature holds a pose without shimmering (§24)
-    for (let i = 0; i < p.count; i++) {
-      if (Math.hypot(p.posX[i] - p.prevX[i], p.posY[i] - p.prevY[i]) < 0.0002) {
-        p.posX[i] = p.prevX[i]
-        p.posY[i] = p.prevY[i]
-      }
-    }
-
-    // FINAL word on positions: chains are intact, period
-    this.enforceChainIntegrity()
-
-    // smoothed core velocity → torso motion stretch (§15.1)
-    const cvx = (p.posX[0] - p.prevX[0]) / dt
-    const cvy = (p.posY[0] - p.prevY[0]) / dt
-    this.coreVelX += (cvx - this.coreVelX) * Math.min(1, dt * 3)
-    this.coreVelY += (cvy - this.coreVelY) * Math.min(1, dt * 3)
-
-    // jump: ballistic arc, everything else suspended
-    if (S === 'jump') {
-      this.jumpT += dt / this.jumpDur
-      const t01 = Math.min(1, this.jumpT)
-      const ease = t01 * t01 * (3 - 2 * t01)
-      const upx = -(this.jumpEY - this.jumpSY)
-      const upy = this.jumpEX - this.jumpSX
-      const ul = Math.hypot(upx, upy) || 1
-      const arc = Math.sin(t01 * Math.PI) * 0.12 * Math.hypot(this.jumpEX - this.jumpSX, this.jumpEY - this.jumpSY)
-      const oldCX = p.posX[0]
-      const oldCY = p.posY[0]
-      p.posX[0] = this.jumpSX + (this.jumpEX - this.jumpSX) * ease + (upx / ul) * arc
-      p.posY[0] = this.jumpSY + (this.jumpEY - this.jumpSY) * ease + (upy / ul) * arc
-      // tuck: the whole body rides the leap rigidly — limbs never trail
-      // half a screen behind the arc (user 2026-07-21)
-      const jdx = p.posX[0] - oldCX
-      const jdy = p.posY[0] - oldCY
-      for (let i = 1; i < p.count; i++) {
-        p.posX[i] += jdx
-        p.posY[i] += jdy
-        p.prevX[i] += jdx
-        p.prevY[i] += jdy
-      }
-      if (this.obstacles.length) {
-        const dj = sdObstacles(p.posX[0], p.posY[0], this.obstacles, this.obstacleRounding) - p.radius[0]
-        if (dj < 0) {
-          obstacleNormal(p.posX[0], p.posY[0], this.obstacles, this.obstacleRounding, this.normal)
-          p.posX[0] -= this.normal.x * dj
-          p.posY[0] -= this.normal.y * dj
-        }
-      }
-      if (t01 >= 1) this.setState('pursue')
-    }
-
-    // locomotion: the body is PULLED by its planted anchors toward their
-    // centroid + a travel lead — speed emerges from the step cadence
-    if (S !== 'jump' && S === 'pursue' && tlen > 0.015) {
-      let planted = 0
-      let sumX = 0
-      let sumY = 0
-      for (let a = 0; a < Math.min(3, p.appendageCount); a++) {
+    /* ---- feet: deterministic targets + swing arcs ---- */
+    if (S !== 'jump') {
+      for (let a = 0; a < LEGS; a++) {
         const pl = this.plants[a]
         if (!pl.active) continue
-        planted++
-        sumX += pl.x
-        sumY += pl.y
-      }
-      if (planted > 0) {
-        // walk rhythm: the body advances in a SURGE right after a foot
-        // plants (weight transfer) and coasts between steps — pulsed
-        // locomotion instead of a rope-drag glide
-        const surge = this.time < this.surgeUntil
-        const gain = moving ? (surge ? 3.2 : 1.6) : 1.2
-        // height is the hover spring's job — a normal term here fights
-        // travel whenever the wall sits behind the direction of motion
-        const pullX = sumX / planted + travelDirX * this.maxReach * 0.5
-        const pullY = sumY / planted + travelDirY * this.maxReach * 0.5
-        let mx = (pullX - p.posX[0]) * Math.min(1, dt * gain)
-        let my = (pullY - p.posY[0]) * Math.min(1, dt * gain)
-        const mlen = Math.hypot(mx, my)
-        const cap = maxStep * 1.35
-        if (mlen > cap) {
-          mx = (mx / mlen) * cap
-          my = (my / mlen) * cap
+        const rootI = p.indexOf(a, 0)
+        const stretch = Math.hypot(pl.x - p.posX[rootI], pl.y - p.posY[rootI])
+        const bad = !this.bridgeClear(p.posX[rootI], p.posY[rootI], pl.x, pl.y) || stretch > this.chainLen[a] * 1.3 || !inRange
+        const gait = S === 'pursue' && stretch > this.chainLen[a] * 1.06 && this.time - this.lastReleaseTime > 0.45
+        if (bad || gait) {
+          pl.active = false
+          this.lastReleaseTime = this.time
+          this.dbgReleases++
         }
-        p.posX[0] += mx
-        p.posY[0] += my
+      }
+      if (S === 'settle' && inRange && this.time - this.lastReleaseTime > 0.4) {
+        const act: Array<{ a: number; proj: number }> = []
+        for (let a = 0; a < LEGS; a++) {
+          const pl = this.plants[a]
+          if (pl.active) act.push({ a, proj: (pl.x - p.posX[0]) * tangX + (pl.y - p.posY[0]) * tangY })
+        }
+        if (act.length >= 2) {
+          const spread = Math.max(...act.map((x) => x.proj)) - Math.min(...act.map((x) => x.proj))
+          if (spread < this.chainLen[0] * 0.7) {
+            act.sort((x, y) => Math.abs(x.proj) - Math.abs(y.proj))
+            this.plants[act[0].a].active = false
+            this.lastReleaseTime = this.time
+            this.dbgReleases++
+          }
+        }
+      }
+      const SLOT = [-0.55, 0, 0.55]
+      for (let a = 0; a < LEGS; a++) {
+        const pl = this.plants[a]
+        const sw = this.swings[a]
+        if (pl.active || sw.active || !inRange) continue
+        if (S === 'rest' && inState > 0.3) continue
+        const rootI = p.indexOf(a, 0)
+        const sgn = moving ? Math.sign(tangX * travelDirX + tangY * travelDirY || 1) : 1
+        const lead = moving ? sgn * this.chainLen[a] * [0.55, 0.8, 0.65][a % 3] : 0
+        let c = this.projectToSurface(
+          p.posX[rootI] + tangX * (SLOT[a % 3] * this.chainLen[a] * 1.15 + lead),
+          p.posY[rootI] + tangY * (SLOT[a % 3] * this.chainLen[a] * 1.15 + lead),
+          0,
+        )
+        const tipR = p.radius[p.indexOf(a, p.jointsPerAppendage - 1)]
+        this.surfaceNormalInto(c.x, c.y, this.normal2)
+        c = { x: c.x + this.normal2.x * tipR * 1.2, y: c.y + this.normal2.y * tipR * 1.2 }
+        let ok = Math.hypot(c.x - p.posX[rootI], c.y - p.posY[rootI]) < this.chainLen[a] * 0.95
+        if (ok) {
+          for (let o = 0; o < LEGS; o++) {
+            if (o === a || !this.plants[o].active) continue
+            if (Math.hypot(this.plants[o].x - c.x, this.plants[o].y - c.y) < this.chainLen[a] * 0.35) ok = false
+          }
+        }
+        if (ok) ok = this.bridgeClear(p.posX[rootI], p.posY[rootI], c.x, c.y)
+        if (ok) {
+          const tipI = p.indexOf(a, p.jointsPerAppendage - 1)
+          sw.active = true
+          sw.fromX = p.posX[tipI]
+          sw.fromY = p.posY[tipI]
+          sw.toX = c.x
+          sw.toY = c.y
+          sw.t = 0
+        }
+      }
+      for (let a = 0; a < LEGS; a++) {
+        const sw = this.swings[a]
+        if (!sw.active) continue
+        sw.t += dt / SWING_TIME
+        if (sw.t >= 1) {
+          sw.active = false
+          this.plants[a].x = sw.toX
+          this.plants[a].y = sw.toY
+          this.plants[a].active = true
+          this.lastPlantTime = this.time
+          this.surgeUntil = this.time + 0.32
+        }
+      }
+    }
+
+    /* ---- limbs: pure kinematic IK ---- */
+    const calm = S === 'rest' || S === 'settle' || S === 'sniff' ? 0.45 : 1
+    for (let a = 0; a < p.appendageCount; a++) {
+      const d = this.drivers[a]
+      const rootX = p.posX[0] + Math.cos(d.restAngle) * p.radius[0] * 0.7
+      const rootY = p.posY[0] + Math.sin(d.restAngle) * p.radius[0] * 0.7
+      if (a < LEGS) {
+        const pl = this.plants[a]
+        const sw = this.swings[a]
+        let tx: number
+        let ty: number
+        let bend: number
+        if (pl.active) {
+          tx = pl.x
+          ty = pl.y
+          bend = this.chainLen[a] * 0.14
+        } else if (sw.active) {
+          const e = sw.t * sw.t * (3 - 2 * sw.t)
+          const lift = Math.sin(sw.t * Math.PI) * this.chainLen[a] * 0.35
+          tx = sw.fromX + (sw.toX - sw.fromX) * e + surfNX * lift
+          ty = sw.fromY + (sw.toY - sw.fromY) * e + surfNY * lift
+          bend = this.chainLen[a] * 0.22
+        } else {
+          tx = rootX + Math.cos(d.restAngle) * this.chainLen[a] * 0.55
+          ty = rootY + Math.sin(d.restAngle) * this.chainLen[a] * 0.55
+          bend = this.chainLen[a] * 0.1
+        }
+        this.solveLimb(a, rootX, rootY, tx, ty, bend)
       } else {
-        // no feet down (free space) — slow direct drift only
-        p.posX[0] += travelDirX * maxStep * 0.35
-        p.posY[0] += travelDirY * maxStep * 0.35
-      }
-    }
-
-    // overstretch hard cap: the body can never pull further than 1.25×
-    // chain from any planted foot — caramel stretching is impossible
-    for (let a = 0; a < Math.min(3, p.appendageCount); a++) {
-      const pl = this.plants[a]
-      if (!pl.active) continue
-      const dx = p.posX[0] - pl.x
-      const dy = p.posY[0] - pl.y
-      const dd = Math.hypot(dx, dy)
-      const lim = this.chainLen[a] * 1.25 + p.radius[0]
-      if (dd > lim) {
-        p.posX[0] = pl.x + (dx / dd) * lim
-        p.posY[0] = pl.y + (dy / dd) * lim
-      }
-    }
-
-    // comfort repulsion ONCE per step (inside the iteration loop it
-    // compounds ×iterations and shoves the creature across the page):
-    // gentle normal push, tangential motion untouched → boundary sliding
-    if (this.obstacles.length) {
-      const comfort = this.config.obstacles.comfortClearance
-      for (let i = 0; i < p.count; i++) {
-        const d = sdObstacles(p.posX[i], p.posY[i], this.obstacles, this.obstacleRounding) - p.radius[i]
-        if (d >= 0 && d < comfort) {
-          obstacleNormal(p.posX[i], p.posY[i], this.obstacles, this.obstacleRounding, this.normal)
-          const push = (1 - d / comfort) * 0.0015 * (p.invMass[i] > 1 ? 0.5 : 1)
-          p.posX[i] += this.normal.x * push
-          p.posY[i] += this.normal.y * push
+        let desX: number
+        let desY: number
+        if (this.sniffing && this.pointerActive) {
+          desX = this.pointerX
+          desY = this.pointerY
+        } else if (this.pointerActive && (pointerDirX !== 0 || pointerDirY !== 0)) {
+          desX = this.slowPX
+          desY = this.slowPY
+        } else {
+          const sweep = d.restAngle + Math.sin(this.time * (0.05 + (a - LEGS) * 0.021) * Math.PI * 2 + a * 2.6) * 1.1 * calm
+          desX = rootX + Math.cos(sweep) * this.chainLen[a]
+          desY = rootY + Math.sin(sweep) * this.chainLen[a]
         }
+        // extension: breathes while idle, but STRETCHES OUT when there is
+        // something to reach for (pointer/sniff) — seeker, not a bundle
+        const wantsReach = this.pointerActive || this.sniffing
+        const ext = this.chainLen[a] * (wantsReach ? 0.9 + 0.08 * Math.sin(this.time * 0.11 * Math.PI * 2 + a) : 0.55 + 0.28 * Math.sin(this.time * 0.07 * Math.PI * 2 + a * 1.9))
+        const ddx = desX - rootX
+        const ddy = desY - rootY
+        const dl = Math.hypot(ddx, ddy) || 1
+        const gx = rootX + (ddx / dl) * Math.min(dl, ext)
+        const gy = rootY + (ddy / dl) * Math.min(dl, ext)
+        const sk = 1 - Math.exp((-dt / 0.5) * Math.LN2)
+        this.seekX[a] += (gx - this.seekX[a]) * sk
+        this.seekY[a] += (gy - this.seekY[a]) * sk
+        const snake = Math.sin(this.time * (0.16 + (a - LEGS) * 0.05) * Math.PI * 2 + d.curlPhase) * this.chainLen[a] * 0.24 * calm
+        this.solveLimb(a, rootX, rootY, this.seekX[a], this.seekY[a], snake)
       }
     }
 
-    /* ---- breathing + squash/stretch (volume feel) ---- */
+    /* breathing + squash (visual radii only) */
     const breathe = 1 + Math.sin(this.breathePhase) * 0.03 + Math.sin(this.breathePhase2) * 0.025
     p.activation[0] = breathe
     for (let a = 0; a < p.appendageCount; a++) {
       const rootI = p.indexOf(a, 0)
       const tipI = p.indexOf(a, p.jointsPerAppendage - 1)
       const span = Math.hypot(p.posX[tipI] - p.posX[rootI], p.posY[tipI] - p.posY[rootI])
-      // compressed limb → thicker mid (squash); extended → slimmer (stretch)
       const ratio = span / (this.chainLen[a] * 0.85)
       const squash = Math.max(-0.25, Math.min(0.45, 1 - ratio))
-      const planted = this.plants[a].active
+      const planted = a < LEGS && this.plants[a].active
       for (let j = 0; j < p.jointsPerAppendage; j++) {
         const i = p.indexOf(a, j)
         const t = j / (p.jointsPerAppendage - 1)
         const profile = Math.sin(t * Math.PI)
-        // load-bearing limbs bulge toward the foot — visible weight
         const pad = planted && t > 0.55 ? 1 + (t - 0.55) * 0.7 : 1
         p.activation[i] = (1 + Math.sin(this.breathePhase2 + a * 1.3) * 0.04) * (1 + squash * 0.5 * profile) * pad
       }
     }
+
+    /* core velocity for motion stretch */
+    const cvx = (p.posX[0] - p.prevX[0]) / dt
+    const cvy = (p.posY[0] - p.prevY[0]) / dt
+    this.coreVelX += (cvx - this.coreVelX) * Math.min(1, dt * 3)
+    this.coreVelY += (cvy - this.coreVelY) * Math.min(1, dt * 3)
   }
 
-  viewportAspect = 1.6
-  /* home anchor — idle pocket the core orbits; M8 navigation moves this.
-     Default = open zone right of the home strap type. */
-  anchorX = 1.02
-  anchorY = 0.42
-  /* smoothed core velocity, consumed by the torso motion-stretch */
-  coreVelX = 0
-  coreVelY = 0
-  /* smoothed intention target (no LOS-loss snapping) */
-  intentX = 1.02
-  intentY = 0.42
-  /* navigation (M8): route to the current desire, rerouted on demand */
-  nav: NavigationField | null = null
-  route: RouteResult | null = null
-  routeIdx = 0
-  private routeGoalX = 0
-  private routeGoalY = 0
-  private lastRouteTime = -10
-  private sniffing = false
-  private lastPointerDist = Infinity
-  private lastProgressTime = 0
-
-  invalidateRoute() {
-    this.route = null
-  }
-
-  /** Can a limb bridge from root to a plant point without crossing an
-      obstacle? Interior samples only (the plant itself sits ON the surface)
-      and obstacle-only distance (viewport edges are valid footing). */
-  private bridgeClear(ax: number, ay: number, bx: number, by: number): boolean {
-    if (!this.obstacles.length) return true
-    for (const t of [0.25, 0.45, 0.65, 0.82]) {
-      const x = ax + (bx - ax) * t
-      const y = ay + (by - ay) * t
-      if (sdObstacles(x, y, this.obstacles, this.obstacleRounding) < 0.008) return false
-    }
-    return true
-  }
-
-  private hasLOS = (ax: number, ay: number, bx: number, by: number): boolean => {
-    for (let k = 1; k <= 8; k++) {
-      const t = k / 8
-      if (!this.clear(ax + (bx - ax) * t, ay + (by - ay) * t, this.particles.radius[0] * 1.1)) return false
-    }
-    return true
-  }
-
-  /* pointer state (handoff §17): raw set from DOM, smoothed in-step */
-  pointerRawX = 0
-  pointerRawY = 0
-  pointerActive = false
-  private pointerX = 0
-  private pointerY = 0
-  private slowPX = 0
-  private slowPY = 0
-  private pointerInit = false
-  private pointerRampStart = -1
-
-  private clear(x: number, y: number, margin: number): boolean {
-    if (x < margin || x > this.viewportAspect - margin || y < margin || y > 1 - margin) return false
-    if (!this.obstacles.length) return true
-    return sdObstacles(x, y, this.obstacles, this.obstacleRounding) >= margin
-  }
-
-  /**
-   * Reachable target: walk from `to` back toward `from` until the point —
-   * and the midpoint of the ray — has `clearance`. Prevents pull targets
-   * landing on the FAR side of thin obstacles (which stranded the body
-   * across them) and targets inside walls (projection fights → jitter).
-   */
-  private reachableTowards(fromX: number, fromY: number, toX: number, toY: number, clearance: number): Vec2 {
-    for (let s = 8; s >= 0; s--) {
-      const t = s / 8
-      const x = fromX + (toX - fromX) * t
-      const y = fromY + (toY - fromY) * t
-      const mx = fromX + (toX - fromX) * t * 0.5
-      const my = fromY + (toY - fromY) * t * 0.5
-      if (this.clear(x, y, clearance) && this.clear(mx, my, clearance * 0.6)) return { x, y }
-    }
-    return { x: fromX, y: fromY }
-  }
-
-  /** Chain integrity (§12, user 2026-07-21): root glued FIRST, then link
-      caps propagate root→tip from the anchored root. Runs after constraints
-      AND as the absolute last position op each step — no single joint can
-      ever fly off, whatever any other system computed. */
-  private enforceChainIntegrity() {
-    const p = this.particles
-    for (let a = 0; a < p.appendageCount; a++) {
-      const rootI = p.indexOf(a, 0)
-      const rdx = p.posX[rootI] - p.posX[0]
-      const rdy = p.posY[rootI] - p.posY[0]
-      const rlen = Math.hypot(rdx, rdy)
-      const rmax = p.radius[0] * 0.9
-      if (rlen > rmax) {
-        p.posX[rootI] = p.posX[0] + (rdx / rlen) * rmax
-        p.posY[rootI] = p.posY[0] + (rdy / rlen) * rmax
-      }
-      for (let j = 0; j < p.jointsPerAppendage - 1; j++) {
-        const i0 = p.indexOf(a, j)
-        const i1 = p.indexOf(a, j + 1)
-        const dx = p.posX[i1] - p.posX[i0]
-        const dy = p.posY[i1] - p.posY[i0]
-        const len = Math.hypot(dx, dy)
-        const maxLen = this.restLengths[i1] * 1.06
-        if (len > maxLen) {
-          const sc = maxLen / len
-          p.posX[i1] = p.posX[i0] + dx * sc
-          p.posY[i1] = p.posY[i0] + dy * sc
-        }
-      }
-    }
-  }
-
-  /** Upload render state: sim interpolation + a ~45ms render low-pass —
-      organic goo, never a single-frame back-and-forth machine (V19). */
+  /** Render upload: sim interpolation + global low-pass softener (limbs are
+      kinematic; the low-pass rounds off swing starts and core pulses). */
   writeUniforms(alpha: number, frameDt: number) {
     const p = this.particles
     const tau = this.state === 'rest' || this.state === 'settle' || this.state === 'sniff' ? 0.09 : 0.045
@@ -1097,29 +846,8 @@ export class OrganismSimulation {
       const y = p.prevY[i] + (p.posY[i] - p.prevY[i]) * alpha
       p.renderX[i] += (x - p.renderX[i]) * k
       p.renderY[i] += (y - p.renderY[i]) * k
-      // core renders at half its physics radius — no head knob (user
-      // 2026-07-21): the visible body is the knot of limb roots + webbing
       const renderR = i === 0 ? p.radius[i] * 0.5 : p.radius[i]
       p.uniformData[i].set(p.renderX[i], p.renderY[i], renderR, p.activation[i])
-    }
-    // cosmetic snake on planted limbs — render offset only, the solver
-    // never sees it, so it can undulate without any physical jitter
-    for (let a = 0; a < Math.min(3, p.appendageCount); a++) {
-      if (!this.plants[a].active) continue
-      const rootI = p.indexOf(a, 0)
-      const tipI = p.indexOf(a, p.jointsPerAppendage - 1)
-      const bx = p.uniformData[tipI].x - p.uniformData[rootI].x
-      const by = p.uniformData[tipI].y - p.uniformData[rootI].y
-      const bl = Math.hypot(bx, by) || 1
-      const px2 = -by / bl
-      const py2 = bx / bl
-      for (let j = 1; j < p.jointsPerAppendage - 1; j++) {
-        const i = p.indexOf(a, j)
-        const t = j / (p.jointsPerAppendage - 1)
-        const w = Math.sin(t * Math.PI) * Math.sin(t * Math.PI * 2 + this.time * 0.5 + a * 2.1) * this.chainLen[a] * 0.06
-        p.uniformData[i].x += px2 * w
-        p.uniformData[i].y += py2 * w
-      }
     }
   }
 }
