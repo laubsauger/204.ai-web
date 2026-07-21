@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { MediaStill } from '../components/MediaStill'
 import { useHead } from '../hooks/useHead'
 import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion'
+import { useMediaQuery } from '../hooks/useMediaQuery'
 import { HERO_CHAPTERS, PARTNERS, STUDIO, TRUSTED_BY, type PartnerLogo } from '../data/studio'
 import { trackChapterSelect, trackCta, trackPlayToggle } from '../lib/analytics'
 import { rendition } from '../lib/media'
@@ -29,7 +30,10 @@ export function Home() {
   const pausedRef = useRef(false)
   const [isPaused, setIsPaused] = useState(false)
   const [timecode, setTimecode] = useState('00:00 / 00:00')
-  const hasVideo = Boolean(current.media?.video) && !reducedMotion
+  // MediaStill skips autoplay video ≤900px (mobile LCP) — mirror that here,
+  // else the reel waits for video events that never come and sticks (§B8)
+  const smallScreen = useMediaQuery('(max-width: 900px)')
+  const hasVideo = Boolean(current.media?.video) && !reducedMotion && !smallScreen
   const hasPlayer = !reducedMotion
 
   const advance = useCallback(() => {
@@ -284,7 +288,7 @@ export function Home() {
 function PartnerMark({ item, hidden = false }: { item: PartnerLogo; hidden?: boolean }) {
   const img = (
     <img
-      src={rendition(item.logo, 500)}
+      src={rendition(item.logo, 320)}
       onError={(e) => {
         if (e.currentTarget.src !== item.logo) e.currentTarget.src = item.logo
       }}

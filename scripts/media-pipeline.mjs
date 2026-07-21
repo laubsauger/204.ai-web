@@ -49,6 +49,11 @@ function collectUrls() {
       urls.add(m[0])
     }
   }
+  // post-rewrite the repo carries no CDN urls — reruns (e.g. new rendition
+  // sizes) source the url list from the previous manifest instead
+  if (existsSync(MANIFEST)) {
+    for (const u of Object.keys(JSON.parse(readFileSync(MANIFEST, 'utf8')))) urls.add(u)
+  }
   return [...urls]
 }
 
@@ -86,6 +91,8 @@ async function processRaster(sharp, src, outBase) {
   const out = {}
   const jobs = [
     [`${outBase}.webp`, (s) => s.resize({ width: 1920, withoutEnlargement: true }).webp({ quality: 80 }), 'path'],
+    [`${outBase}-p-160.webp`, (s) => s.resize({ width: 160, withoutEnlargement: true }).webp({ quality: 75 }), null],
+    [`${outBase}-p-320.webp`, (s) => s.resize({ width: 320, withoutEnlargement: true }).webp({ quality: 76 }), null],
     [`${outBase}-p-500.webp`, (s) => s.resize({ width: 500, withoutEnlargement: true }).webp({ quality: 78 }), null],
     [`${outBase}-p-800.webp`, (s) => s.resize({ width: 800, withoutEnlargement: true }).webp({ quality: 78 }), null],
     [`${outBase}-p-800.jpg`, (s) => s.resize({ width: 800, withoutEnlargement: true }).flatten({ background: BG }).jpeg({ quality: 80, mozjpeg: true }), 'jpg800'],
@@ -161,7 +168,8 @@ async function build() {
     if (e.ext === '.mp4') mp4ByBase.set(e.name.replace(/[-_]?mp4$/, ''), e)
   }
 
-  const manifest = {}
+  // merge onto prior manifest — a rerun must never clobber existing mappings
+  const manifest = existsSync(MANIFEST) ? JSON.parse(readFileSync(MANIFEST, 'utf8')) : {}
   let fetched = 0
   for (const e of entries) {
     const srcFile = join(SRC_DIR, `${e.name}${e.ext}`)

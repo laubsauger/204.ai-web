@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useHead } from '../hooks/useHead'
 import { CONTACT, PEOPLE, PRACTICE, RNA_STUDIO_URL, STATS } from '../data/studio'
+import { rendition } from '../lib/media'
 import styles from './About.module.css'
 
 export function About() {
@@ -50,7 +51,19 @@ export function About() {
           <Link key={p.name} to={`/makers/${p.slug}`} className={styles.person}>
             <div className={styles.personName}>
               <span className={`t-mono ${styles.personNum}`}>{String(i + 1).padStart(2, '0')}</span>
-              {p.photo && <img src={p.photo} alt={p.name} className={styles.personPhoto} loading="lazy" decoding="async" />}
+              {/* eager + tiny rendition: lazy 44px imgs under a grayscale
+                  filter can skip their first paint in Chromium (§B9) */}
+              {p.photo && (
+                <img
+                  src={rendition(p.photo, 160)}
+                  onError={(e) => {
+                    if (p.photo && e.currentTarget.src !== p.photo) e.currentTarget.src = p.photo
+                  }}
+                  alt={p.name}
+                  className={styles.personPhoto}
+                  decoding="async"
+                />
+              )}
               <span className={`t-serif ${styles.personLabel}`}>{p.name}</span>
             </div>
             <span className={`t-mono ${styles.personRole}`}>{p.role}</span>

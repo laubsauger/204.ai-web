@@ -18,7 +18,7 @@ export function Nav() {
       <div className={styles.inner}>
       <Link to="/" className={styles.logo} aria-label="204 · NO-CONTENT — home">
         <img
-          src={rendition(LOGO_URL, 500)}
+          src={rendition(LOGO_URL, 320)}
           onError={(e) => {
             if (e.currentTarget.src !== LOGO_URL) e.currentTarget.src = LOGO_URL
           }}

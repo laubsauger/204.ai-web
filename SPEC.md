@@ -74,6 +74,7 @@ T25|x|media pipeline scripts/media-pipeline.mjs: url scan → fetch → media-sr
 T26|x|ref rewrite: content/*.json media urls → /media/..., logo (index.html + useHead + generate-meta), -p-800 helpers → local paths (src/lib/media.ts, useHead.ts, generate-meta.mjs), drop cdn preconnect/dns-prefetch, video entries mp4-only|C12,V4
 T27|x|firebase.json headers: /media/** + /assets/** immutable 1y, html no-cache; SPA rewrite; verify w/ curl -I on deployed site|I.firebase,V14
 T28|~|CI: add Firebase deploy job (action-hosting-deploy, service acct secret) alongside GH Pages job; Firebase build base=/ SITE_URL=studio204-web.web.app, canonical/sitemap → Firebase|C13,I.firebase,V16
+T30|x|rendition right-sizing (Lighthouse ~307KB): pipeline +`-p-160`/`-p-320`; partner/nav logos 500→320, maker avatars full→160 eager, MediaStill responsive srcset/sizes (thumb 320, letterbox 800w/1920w pair mirrored in generate-meta preload imagesrcset)|C12,V15
 T29|.|verify sprint: build+lint, V4 grep empty, V6 rerun, player-probe, V15 size audit, curl header check both hosts, both deploys green|V4,V5,V6,V14,V15,V16
 
 ## §B bugs
@@ -82,6 +83,10 @@ B1|2026-07-20|work hover preview absolute w/o viewport clamp → clipped bottom 
 B2|2026-07-20|nav status lines not optically flush right (block/text-align)|flex column + flex-end, cosmetic
 B3|2026-07-20|t-display tracking -0.02em (prototype = -0.02px ≈ none) + fixed 1280-design px caps → tiny type + dead space on large/hidpi screens|V12 + fluid clamps
 B4|2026-07-20|home not composed to viewport: fixed-height hero + oversized strap pushed CTA below fold on FHD; fixed-width chapter thumbs forced rail taller than hero (last item clipped); nav divider floating|hero flex-fills 100dvh-composed root, strap 6.2vw, thumbs derive width from row height, status divider stretched
+B11|2026-07-21|pipeline rerun after --rewrite found 0 CDN urls (refs now local) → wrote empty manifest, clobbered url→path map|manifest merged not overwritten + url list sourced from prior manifest; restored from git
+B10|2026-07-21|home .root min-height 100dvh but hero max-height caps at 33vw → medium-width tall windows left dead gap before logos section|@media (max-aspect-ratio: 8/5) releases composition
+B9|2026-07-21|About maker avatars: lazy 44px imgs under grayscale filter skip first paint in Chromium until repaint (hover)|eager + -p-160 rendition + translateZ(0) layer
+B8|2026-07-21|mobile reel stuck: MediaStill gates video ≤900px (LCP) but Home hasVideo didn't → waited for video events that never came; no progress/auto-advance (pre-existing since mobile LCP pass)|Home mirrors smallScreen gate → still-timer drives mobile
 B7|2026-07-21|player-probe.mjs selector `button[class*=chapter]` vs actual `<div role="button">` markup → probe crashed on chapter-switch step, hero verification silently unusable (pre-existing, surfaced by T29 rerun)|selector → `[role="button"][class*=chapter]`
 B6|2026-07-21|long-form video (Yards reel 2.4min) 36.5MB @ 1080p/CRF23 tripped orig 15MB cap; user: quality > squeeze|V15 relaxed → video ≤ 40MB; ladder (1080p23→720p26→720p28→540p30) only if > 38MB
 B5|2026-07-20|hero player state frozen at 0: inline ref arrow on <video> changed identity every render → React 19 ran ref cleanup + re-invoked host bindVideo, resetting progress/timecode state on each timeupdate render; also <source> swaps don't reload video (chapter switch kept old footage) and webm transcodes report Infinity duration|memoized merged ref, key video by src, mp4-first sources

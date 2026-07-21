@@ -153,7 +153,11 @@ function metaFor(r) {
     `    <meta name="twitter:image" content="${esc(image)}" />` +
     // LCP: hero media downloads in parallel with the JS bundle instead of
     // being discovered after React mounts
-    (r.preload ? `\n    <link rel="preload" as="image" href="${esc(assetUrl(r.preload))}" fetchpriority="high" />` : '')
+    // srcset/sizes mirror the MediaStill letterbox img — keep in sync or the
+    // preload stops matching the picked source and double-downloads
+    (r.preload
+      ? `\n    <link rel="preload" as="image" href="${esc(assetUrl(r.preload))}" imagesrcset="${esc(`${assetUrl(r.preload).replace(/\.webp$/, '-p-800.webp')} 800w, ${assetUrl(r.preload)} 1920w`)}" imagesizes="(max-width: 900px) 100vw, 62vw" fetchpriority="high" />`
+      : '')
   )
 }
 

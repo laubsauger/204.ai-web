@@ -61,13 +61,29 @@ export function MediaStill({ scene, media, mini = false, playing = false, letter
           LCP — an equal-size video frame later can't replace it */}
       {media.still && (
         <img
-          src={letterbox ? media.still : rendition(media.still, mini ? 500 : 800)}
+          src={letterbox ? media.still : rendition(media.still, mini ? 320 : 800)}
+          /* responsive pick: rail thumbs ~160px desktop, work/service cards
+             near full-width on mobile, hero letterbox full-res only on
+             desktop — don't ship 1920w into a phone viewport. The letterbox
+             srcset/sizes pair is mirrored by the generate-meta preload —
+             keep both in sync or the preload double-downloads. */
+          srcSet={
+            media.still.startsWith('data:')
+              ? undefined
+              : letterbox
+                ? `${rendition(media.still, 800)} 800w, ${media.still} 1920w`
+                : [160, 320, 500, 800].map((w) => `${rendition(media.still!, w as 160 | 320 | 500 | 800)} ${w}w`).join(', ')
+          }
+          sizes={letterbox ? '(max-width: 900px) 100vw, 62vw' : mini ? '(max-width: 900px) 88vw, 160px' : '(max-width: 900px) 100vw, 60vw'}
           alt=""
           loading={priority ? 'eager' : 'lazy'}
           fetchPriority={priority ? 'high' : undefined}
           decoding="async"
           onError={(e) => {
-            if (media.still && e.currentTarget.src !== media.still) e.currentTarget.src = media.still
+            if (media.still && e.currentTarget.src !== media.still) {
+              e.currentTarget.srcset = ''
+              e.currentTarget.src = media.still
+            }
           }}
           className={!useVideo && playing && !reducedMotion ? 'kenburns' : undefined}
           style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}

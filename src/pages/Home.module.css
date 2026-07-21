@@ -7,6 +7,15 @@
   min-height: calc(100dvh - var(--nav-h));
 }
 
+/* medium-width / tall windows: the hero's width-based max-height cap can't
+   absorb the 100dvh slack, which opened a dead gap before the logos section
+   (§B10) — release the viewport composition and let the page flow */
+@media (max-aspect-ratio: 8/5) {
+  .root {
+    min-height: 0;
+  }
+}
+
 /* ─── hero ─── */
 .hero {
   position: relative;

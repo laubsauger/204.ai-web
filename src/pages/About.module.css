@@ -98,6 +98,8 @@
   border-radius: 2px;
   filter: grayscale(0.35) contrast(1.05);
   transition: filter 0.3s;
+  /* own layer — filtered imgs sometimes miss their first paint otherwise (§B9) */
+  transform: translateZ(0);
 }
 
 .person {
