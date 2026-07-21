@@ -40,13 +40,27 @@
 }
 
 /* any interactive surface without a label — small open ring; inverts like
-   the dot so it never covers the text underneath */
+   the dot so it never covers the text underneath. A filled center dot keeps
+   it visible where the thin outline inverts into mid-grey. */
 .ring {
   width: 22px;
   height: 22px;
+  position: relative;
   mix-blend-mode: difference;
   background: transparent;
   border: 1px solid var(--fg);
+}
+
+.ring::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 5px;
+  height: 5px;
+  border-radius: 99px;
+  background: var(--fg);
 }
 
 /* text fields keep the native caret; the dot steps back */
