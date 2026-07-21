@@ -14,6 +14,8 @@ export type SimRect = {
   hh: number
   weight: number
   allowTendrils: boolean
+  /* circle obstacles: radius = hw (data-organism-shape="circle") */
+  circle?: boolean
 }
 
 /** Signed distance from point to an axis-aligned rounded rect. */
@@ -25,10 +27,12 @@ export function sdRoundedRect(px: number, py: number, rect: SimRect, radius: num
   return Math.hypot(ax, ay) + Math.min(Math.max(qx, qy), 0) - radius
 }
 
-/** Signed distance to the union of all rects (hard field). */
+/** Signed distance to the union of all obstacles (hard field). */
 export function sdObstacles(px: number, py: number, rects: SimRect[], rounding: number): number {
   let d = Infinity
-  for (const r of rects) d = Math.min(d, sdRoundedRect(px, py, r, rounding))
+  for (const r of rects) {
+    d = Math.min(d, r.circle ? Math.hypot(px - r.cx, py - r.cy) - r.hw : sdRoundedRect(px, py, r, rounding))
+  }
   return d
 }
 

@@ -85,6 +85,7 @@ export class DomObstacleCollector {
       const paddingPx = Number(el.dataset.organismPadding ?? '16')
       const weight = Number(el.dataset.organismWeight ?? '1')
       const allowTendrils = el.dataset.organismAllowTendrils === 'true'
+      const circle = el.dataset.organismShape === 'circle'
       // convert DOM rect (top-left) to sim-space center + half extents
       const a = viewportPxToSimulation(r.left, r.top, viewport)
       const b = viewportPxToSimulation(r.right, r.bottom, viewport)
@@ -96,6 +97,7 @@ export class DomObstacleCollector {
           hh: Math.abs(a.y - b.y) / 2,
           weight: Number.isFinite(weight) ? weight : 1,
           allowTendrils,
+          circle,
         },
         paddingSim: (Number.isFinite(paddingPx) ? paddingPx : 16) / h,
       })

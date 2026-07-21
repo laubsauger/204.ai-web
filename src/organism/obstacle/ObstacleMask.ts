@@ -48,25 +48,26 @@ export class ObstacleMask {
     // comfort (G) first, hard (R) over it; weight → B, tendril → A.
     // Painter order with 'lighter' keeps channels independent.
     ctx.globalCompositeOperation = 'lighter'
-    for (const { rect, paddingSim } of obstacles) {
-      const comfortPad = paddingSim + comfortClearanceSim
-      const [cx0, cy0] = toMask(rect.cx - rect.hw - comfortPad, rect.cy + rect.hh + comfortPad)
-      const [cx1, cy1] = toMask(rect.cx + rect.hw + comfortPad, rect.cy - rect.hh - comfortPad)
-      ctx.fillStyle = 'rgb(0, 255, 0)'
-      ctx.fillRect(cx0, cy0, cx1 - cx0, cy1 - cy0)
-
-      const [hx0, hy0] = toMask(rect.cx - rect.hw - paddingSim, rect.cy + rect.hh + paddingSim)
-      const [hx1, hy1] = toMask(rect.cx + rect.hw + paddingSim, rect.cy - rect.hh - paddingSim)
-      const weight = Math.round(Math.min(rect.weight / 4, 1) * 255)
-      const tendril = rect.allowTendrils ? 255 : 0
-      ctx.fillStyle = `rgba(255, 0, ${weight}, 1)`
-      ctx.fillRect(hx0, hy0, hx1 - hx0, hy1 - hy0)
-      if (tendril) {
-        // alpha channel via separate low-alpha pass is unreliable with
-        // 'lighter'; encode tendril permission into B's high bit instead
-        ctx.fillStyle = 'rgba(0, 0, 128, 1)'
-        ctx.fillRect(hx0, hy0, hx1 - hx0, hy1 - hy0)
+    const fillShape = (rect: CollectedObstacle['rect'], pad: number, style: string) => {
+      ctx.fillStyle = style
+      if (rect.circle) {
+        const [ccx, ccy] = toMask(rect.cx, rect.cy)
+        const [ex] = toMask(rect.cx + rect.hw + pad, rect.cy)
+        const [, ey] = toMask(rect.cx, rect.cy - rect.hh - pad)
+        ctx.beginPath()
+        ctx.ellipse(ccx, ccy, Math.abs(ex - ccx), Math.abs(ey - ccy), 0, 0, Math.PI * 2)
+        ctx.fill()
+      } else {
+        const [x0, y0] = toMask(rect.cx - rect.hw - pad, rect.cy + rect.hh + pad)
+        const [x1, y1] = toMask(rect.cx + rect.hw + pad, rect.cy - rect.hh - pad)
+        ctx.fillRect(x0, y0, x1 - x0, y1 - y0)
       }
+    }
+    for (const { rect, paddingSim } of obstacles) {
+      fillShape(rect, paddingSim + comfortClearanceSim, 'rgb(0, 255, 0)')
+      const weight = Math.round(Math.min(rect.weight / 4, 1) * 255)
+      fillShape(rect, paddingSim, `rgba(255, 0, ${weight}, 1)`)
+      if (rect.allowTendrils) fillShape(rect, paddingSim, 'rgba(0, 0, 128, 1)')
     }
     ctx.globalCompositeOperation = 'source-over'
     void s

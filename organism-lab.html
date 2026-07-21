@@ -13,8 +13,12 @@
         position: absolute; z-index: 1; border: 1px solid rgba(236,236,236,0.3);
         background: rgba(20,20,20,0.9); display: grid; place-items: center;
       }
-      #box1 { left: 38%; top: 34vh; width: 24%; height: 32vh; }
+      #box1 { left: 35%; top: 40vh; width: 30%; height: 32vh; }
       #box2 { left: 12%; top: 150vh; width: 30%; height: 40vh; }
+      #box3 { left: 6%; top: 8vh; width: 34%; height: 13vh; }
+      .word { position: absolute; left: 8%; top: 68vh; z-index: 1; font-weight: 900; font-size: 11vh; letter-spacing: 0.06em; color: #ececec; font-family: system-ui, sans-serif; user-select: none; }
+      .word span { display: inline-block; }
+      #circle1 { left: 68%; top: 16vh; width: 21vh; height: 21vh; border-radius: 50%; }
       #hud { position: fixed; background: #0a0a0a; padding: 4px 8px; left: 12px; top: 10px; z-index: 2; color: rgba(236,236,236,0.6); }
       a { color: inherit; }
     </style>
@@ -28,6 +32,9 @@
     </div>
     <div class="box" id="box1" data-organism-obstacle data-organism-padding="6">obstacle</div>
     <div class="box" id="box2" data-organism-obstacle data-organism-padding="6">obstacle 2 (scroll down)</div>
+    <div class="box" id="box3" data-organism-obstacle data-organism-padding="6">wide obstacle</div>
+    <div class="box" id="circle1" data-organism-obstacle data-organism-padding="6" data-organism-shape="circle">o</div>
+    <div class="word" aria-hidden="true"><span data-organism-obstacle data-organism-padding="4">2</span><span data-organism-obstacle data-organism-padding="4">0</span><span data-organism-obstacle data-organism-padding="4">4</span>&nbsp;<span data-organism-obstacle data-organism-padding="4">L</span><span data-organism-obstacle data-organism-padding="4">A</span><span data-organism-obstacle data-organism-padding="4">B</span></div>
     <div class="organism-background" id="mount" aria-hidden="true"></div>
     <script type="module" src="/src/organism-lab.ts"></script>
   </body>
