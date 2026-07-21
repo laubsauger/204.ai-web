@@ -1,5 +1,6 @@
 import { NavLink, Link } from 'react-router-dom'
 import { LOGO_URL } from '../data/studio'
+import { trackCta } from '../lib/analytics'
 import styles from './Nav.module.css'
 
 const ITEMS = [
@@ -31,7 +32,7 @@ export function Nav() {
         ))}
       </nav>
 
-      <Link to="/contact" className={styles.status}>
+      <Link to="/contact" className={styles.status} onClick={() => trackCta('work_with_us')}>
         <span className={styles.statusBooking}>● RNA STUDIO · LISBOA</span>
         <span className={styles.statusCta}>WORK WITH US →</span>
       </Link>

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { MediaStill } from '../components/MediaStill'
 import { useCursor } from '../components/Cursor'
 import { useHead } from '../hooks/useHead'
+import { trackWorkFilter } from '../lib/analytics'
 import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion'
 import { CATEGORIES, WORKS, type CategoryFilter, type Work as WorkItem } from '../data/studio'
 import styles from './Work.module.css'
@@ -40,7 +41,10 @@ export function Work() {
           {CATEGORIES.map((c) => (
             <button
               key={c}
-              onClick={() => setCat(c)}
+              onClick={() => {
+                setCat(c)
+                trackWorkFilter(c)
+              }}
               className={`t-mono ${styles.filter} ${cat === c ? styles.filterActive : ''}`}
               aria-pressed={cat === c}
             >

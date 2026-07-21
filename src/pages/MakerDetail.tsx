@@ -13,6 +13,7 @@ export function MakerDetail() {
   useHead(
     p ? `${p.name} — 204 · NO-CONTENT` : '404 — 204 · NO-CONTENT',
     p ? `${p.name}, ${p.role} at 204 — creative technology studio, Lisbon.` : 'Maker not found.',
+    p?.photo,
   )
 
   if (!p) return <NotFound />
@@ -51,7 +52,7 @@ export function MakerDetail() {
         <aside className={`${styles.side} anim-fade`}>
           {p.bio && <p className={`t-serif ${styles.bio}`}>{p.bio}</p>}
           <div className="t-label" style={{ marginBottom: 8 }}>/ REACH OUT</div>
-          <SocialLinks socials={p.socials} />
+          <SocialLinks socials={p.socials} person={p.name} />
           <Link to="/contact" className={`t-mono ${styles.cta}`}>
             → WORK WITH THE ROOM
           </Link>

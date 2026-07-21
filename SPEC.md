@@ -25,7 +25,7 @@ Ship production static site for studio "204 · NO-CONTENT". Implement design/ Di
 - V1: prod bundle contains zero references to unpkg/babel-standalone/react.development. `grep -r "unpkg\|babel" dist/assets` → empty.
 - V2: token values in code match §C4 exactly; defined once in `:root` CSS vars; components reference vars, never re-hardcode hex (exception: SVG scene art inside CinematicStill).
 - V3: all 5 routes deep-linkable: direct URL load renders correct page (SPA fallback).
-- V4: fonts + app code self-hosted, no third-party JS/CSS at runtime. TEMP exception (until redesign approved, then self-host): project media (img/video) may hotlink cdn.prod.website-files.com; youtube embeds + OSM map tiles allowed on demand-load (click-to-load only).
+- V4: fonts + app code self-hosted, no third-party JS/CSS at runtime. TEMP exception (until redesign approved, then self-host): project media (img/video) may hotlink cdn.prod.website-files.com; youtube embeds + OSM map tiles allowed on demand-load (click-to-load only); GA4 gtag.js (G-E2HCBBXBVP, same property as the Webflow site) loads at runtime by explicit request.
 - V5: `npm run build` exits 0 with zero TS errors. `npm run lint` exits 0.
 - V6: no horizontal overflow at 360px, 768px, 1280px, 1920px viewport widths.
 - V7: rAF/interval animations (CinematicStill, hover preview timecode) gated by `prefers-reduced-motion: reduce` → static frame.
@@ -57,6 +57,7 @@ T16|x|verify: build+lint, V6 rerun, screenshots desktop+mobile, V1 grep|V1,V5,V6
 T17|x|full catalog: all 31 scraped projects in ledger, codes reversed (highest=newest), posters where available|C10
 T18|x|wide-screen pass: 1720px shell, nav/chapter/label scale-up, strap redesign (no em dash), wider intro, cursor-anchored hover preview, /work header merged (label+count, no LEDGER slab), chapter category tags|V11,V13,C7
 T19|x|SEO pass: og:image, JSON-LD Organization, noscript fallback, semantic h1 audit; sitemap deferred until final domain|I.seo
+T22|x|share meta + analytics: og/twitter tags per route (client via useHead + static per-route HTML at build for non-JS scrapers → also fixes GH Pages deep-link 404), sitemap.xml (SITE_URL env), GA4 wired to existing property w/ SPA page_views + named events (cta_click, generate_lead, select_chapter, reel_play_toggle, video_open, map_load, social_click, filter_work)|I.seo,V10
 T21|x|service detail pages /services/:slug: cards click through (READ MORE affordance), product loop hero video, modes list, feature grid, related-work links by category, prev/next pager, 404 on unknown slug; copy from scraped product pages|I.routes,C10,V10
 T20|x|work detail pages /work/:slug: ledger rows click through; hero media, meta grid, longform copy (scraped where available), click-to-load youtube (RUBr/Venom), photo gallery (Hulaween/1N), prev/next nav, unknown slug → 404|I.routes,C10,V4,V10
 

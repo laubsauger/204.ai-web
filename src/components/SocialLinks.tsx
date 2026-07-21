@@ -1,6 +1,7 @@
 // Social link row — renders only the links that are set on the person.
 
 import type { PersonSocials } from '../data/studio'
+import { trackSocialClick } from '../lib/analytics'
 import styles from './SocialLinks.module.css'
 
 const ICONS = {
@@ -37,7 +38,7 @@ const LABELS: Record<keyof PersonSocials, string> = {
   email: 'EMAIL',
 }
 
-export function SocialLinks({ socials, compact = false }: { socials?: PersonSocials; compact?: boolean }) {
+export function SocialLinks({ socials, compact = false, person }: { socials?: PersonSocials; compact?: boolean; person?: string }) {
   if (!socials) return null
   const entries = (Object.keys(LABELS) as Array<keyof PersonSocials>)
     .filter((k) => socials[k])
@@ -58,7 +59,10 @@ export function SocialLinks({ socials, compact = false }: { socials?: PersonSoci
           rel="noreferrer"
           className={styles.item}
           aria-label={e.label}
-          onClick={(ev) => ev.stopPropagation()}
+          onClick={(ev) => {
+            ev.stopPropagation()
+            trackSocialClick(e.key, person)
+          }}
         >
           <span className={styles.icon}>{ICONS[e.key]}</span>
           {!compact && <span className={`t-mono ${styles.label}`}>{e.label}</span>}

@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useHead } from '../hooks/useHead'
+import { trackLead } from '../lib/analytics'
 import { BUDGET_RANGES, CONTACT } from '../data/studio'
 import styles from './Contact.module.css'
 
@@ -20,6 +21,7 @@ export function Contact() {
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
+    trackLead(brief.budget)
     setSent(true)
   }
 

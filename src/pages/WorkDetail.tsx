@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { MediaStill } from '../components/MediaStill'
 import { useHead } from '../hooks/useHead'
+import { trackVideoOpen } from '../lib/analytics'
 import { WORKS } from '../data/studio'
 import { NotFound } from './NotFound'
 import styles from './WorkDetail.module.css'
@@ -14,6 +15,7 @@ export function WorkDetail() {
   useHead(
     w ? `${w.title} — 204 · NO-CONTENT` : '404 — 204 · NO-CONTENT',
     w ? w.note : 'Project not found.',
+    w?.media?.still,
   )
 
   if (!w) return <NotFound />
@@ -105,7 +107,13 @@ function YoutubeEmbed({ id, title }: { id: string; title: string }) {
           allowFullScreen
         />
       ) : (
-        <button onClick={() => setLoaded(true)} className={styles.filmButton}>
+        <button
+          onClick={() => {
+            trackVideoOpen(title, id)
+            setLoaded(true)
+          }}
+          className={styles.filmButton}
+        >
           <span className={styles.filmRing}>
             <span className={styles.filmTriangle} />
           </span>

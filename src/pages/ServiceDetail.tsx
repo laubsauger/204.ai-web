@@ -1,6 +1,7 @@
 import { Link, useParams } from 'react-router-dom'
 import { MediaStill } from '../components/MediaStill'
 import { useHead } from '../hooks/useHead'
+import { trackCta } from '../lib/analytics'
 import { SERVICES_ALL, SERVICES_INTERACTIVE, WORKS } from '../data/studio'
 import { NotFound } from './NotFound'
 import styles from './ServiceDetail.module.css'
@@ -13,6 +14,7 @@ export function ServiceDetail() {
   useHead(
     s ? `${s.label} — 204 · NO-CONTENT` : '404 — 204 · NO-CONTENT',
     s ? s.body : 'Service not found.',
+    s?.still,
   )
 
   if (!s) return <NotFound />
@@ -58,7 +60,7 @@ export function ServiceDetail() {
           ) : (
             <>
               <p className={`t-serif ${styles.intro}`}>{s.intro ?? s.body}</p>
-              <Link to="/contact" className={`t-mono ${styles.cta}`}>
+              <Link to="/contact" className={`t-mono ${styles.cta}`} onClick={() => trackCta('bring_to_event', { service: s.label })}>
                 → BRING THIS TO YOUR EVENT
               </Link>
             </>

@@ -4,6 +4,7 @@ import { MediaStill } from '../components/MediaStill'
 import { useHead } from '../hooks/useHead'
 import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion'
 import { HERO_CHAPTERS, STUDIO } from '../data/studio'
+import { trackChapterSelect, trackCta, trackPlayToggle } from '../lib/analytics'
 import styles from './Home.module.css'
 
 function fmt(s: number) {
@@ -38,6 +39,7 @@ export function Home() {
     pausedRef.current = false
     setIsPaused(false)
     setActiveFrame(i)
+    trackChapterSelect(HERO_CHAPTERS[i].title)
   }
 
   const bindVideo = useCallback((el: HTMLVideoElement | null) => {
@@ -86,6 +88,7 @@ export function Home() {
   const togglePlay = () => {
     const el = videoEl.current
     if (el) {
+      trackPlayToggle(el.paused ? 'play' : 'pause', current.title)
       if (el.paused) el.play().catch(() => {})
       else el.pause()
       return
@@ -93,6 +96,7 @@ export function Home() {
     // still chapter: pause/resume the auto-advance timer
     pausedRef.current = !pausedRef.current
     setIsPaused(pausedRef.current)
+    trackPlayToggle(pausedRef.current ? 'pause' : 'play', current.title)
   }
 
   // still-only chapters: timed progress + auto-advance
@@ -242,7 +246,7 @@ export function Home() {
             204 is a creative technology studio working at the intersection of AI, motion, identity and live
             environments. Based at RnA Studio, Lisbon — operating everywhere there's a signal.
           </p>
-          <Link to="/work" className={`t-mono ${styles.cta}`}>
+          <Link to="/work" className={`t-mono ${styles.cta}`} onClick={() => trackCta('explore_work')}>
             EXPLORE OUR WORK
             <span className={styles.ctaArrow}>→</span>
           </Link>

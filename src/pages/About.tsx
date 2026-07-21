@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useHead } from '../hooks/useHead'
+import { trackMapLoad } from '../lib/analytics'
 import { CONTACT, PEOPLE, PRACTICE, STATS } from '../data/studio'
 import styles from './About.module.css'
 
@@ -107,7 +108,13 @@ function MapEmbed() {
           title="RnA Studio on the map"
         />
       ) : (
-        <button onClick={() => setLoaded(true)} className={styles.mapButton}>
+        <button
+          onClick={() => {
+            trackMapLoad()
+            setLoaded(true)
+          }}
+          className={styles.mapButton}
+        >
           <span className={styles.mapCross} aria-hidden="true">
             ⌖
           </span>
