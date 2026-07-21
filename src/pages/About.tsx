@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useHead } from '../hooks/useHead'
 import { trackMapLoad } from '../lib/analytics'
-import { CONTACT, PEOPLE, PRACTICE, STATS } from '../data/studio'
+import { CONTACT, PEOPLE, PRACTICE, RNA_STUDIO_URL, STATS } from '../data/studio'
 import styles from './About.module.css'
 
 export function About() {
@@ -65,6 +65,9 @@ export function About() {
             installations and collaborative projects. Write to{' '}
             <a href={`mailto:${CONTACT.email}`} style={{ color: 'var(--accent)' }}>{CONTACT.email}</a>
           </p>
+          <a href={RNA_STUDIO_URL} target="_blank" rel="noreferrer" className={`t-mono ${styles.rnaLink}`}>
+            → RNA-STUDIO.COM
+          </a>
         </div>
 
         <div className={styles.findUs}>

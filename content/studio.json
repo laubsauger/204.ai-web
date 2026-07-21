@@ -52,5 +52,82 @@
       "body": "We deploy, calibrate, and ensure seamless on-site performance."
     }
   ],
-  "pillarsCount": "02"
+  "pillarsCount": "02",
+  "rnaStudioUrl": "https://www.rna-studio.com/",
+  "trustedBy": [
+    {
+      "name": "Lisbon Insiders",
+      "logo": "https://cdn.prod.website-files.com/64ba5b3b418a540ade9f6e31/67489229f49f12c2bbb0c33a_lisbon_insiders_logo.png"
+    },
+    {
+      "name": "Non Fungible Conference",
+      "logo": "https://cdn.prod.website-files.com/64ba5b3b418a540ade9f6e31/67489258639d93160305bdcd_667d843c349d4113343c9a29_6365385bb934b73edc273dab_NFC_complete%20(2)%20(1).png"
+    },
+    {
+      "name": "StandVirtual",
+      "logo": "https://cdn.prod.website-files.com/64ba5b3b418a540ade9f6e31/69a075e076a988d6b84312a8_Stand.png"
+    },
+    {
+      "name": "Vagabond",
+      "logo": "https://cdn.prod.website-files.com/64ba5b3b418a540ade9f6e31/67489261230ef063c37ff438_image01.png"
+    },
+    {
+      "name": "Alan Watts Organization",
+      "logo": "https://cdn.prod.website-files.com/64ba5b3b418a540ade9f6e31/69b2f6c549e638547f96b3a3_AlanWatts%2Bwhite%2Bsig%2Bcopy.webp"
+    },
+    {
+      "name": "YARD",
+      "logo": "https://cdn.prod.website-files.com/64ba5b3b418a540ade9f6e31/6748926d7e87017bba82eaf9_yards.png"
+    },
+    {
+      "name": "Texas Eclipse Festival",
+      "logo": "https://cdn.prod.website-files.com/64ba5b3b418a540ade9f6e31/674892884dbf61efa85c313a_66cd5e76-texas-eclipse-festival-logo.avif"
+    },
+    {
+      "name": "Rare Effect",
+      "logo": "https://cdn.prod.website-files.com/64ba5b3b418a540ade9f6e31/6749ae050cb7c7dfcf143ecc_rareeffect_logo.png"
+    },
+    {
+      "name": "Viva el Gonzo",
+      "logo": "https://cdn.prod.website-files.com/64ba5b3b418a540ade9f6e31/68403ff217b2b48ec566c733_VIVA_EL_GONZO_profile_photo_720x720-transparent_3.30.34_PM_1200x1200%20copy.png"
+    },
+    {
+      "name": "KBC",
+      "logo": "https://cdn.prod.website-files.com/64ba5b3b418a540ade9f6e31/69b2f659a37a9e111602b221_kbc-400-9e95b84803.png"
+    },
+    {
+      "name": "Portugal Tech Week",
+      "logo": "https://cdn.prod.website-files.com/64ba5b3b418a540ade9f6e31/692ec3bc25a28a9e12390510_logo-1-1.png"
+    },
+    {
+      "name": "Studio 54b",
+      "logo": "https://cdn.prod.website-files.com/64ba5b3b418a540ade9f6e31/69b2f690089e3534501c143f_studio54b_logo.png"
+    },
+    {
+      "name": "Hulaween",
+      "logo": "https://cdn.prod.website-files.com/64ba5b3b418a540ade9f6e31/674892a0bd28138630cfe9e1_DropShadowHulaLogo.png"
+    },
+    {
+      "name": "Wines From Another World",
+      "logo": "https://cdn.prod.website-files.com/64ba5b3b418a540ade9f6e31/67489265485a73607410fa99_winesfromanother.png"
+    },
+    {
+      "name": "Tkeshi",
+      "logo": "https://cdn.prod.website-files.com/64ba5b3b418a540ade9f6e31/692ec4c40a1c8cb2375c1e58_Screenshot%202025-12-02%20at%2011.49.56.png"
+    }
+  ],
+  "partners": [
+    {
+      "name": "Screenix",
+      "logo": "https://cdn.prod.website-files.com/64ba5b3b418a540ade9f6e31/69a0354ad380027aac48be0f_image%203.png"
+    },
+    {
+      "name": "TASTE",
+      "logo": "https://cdn.prod.website-files.com/64ba5b3b418a540ade9f6e31/69a035e3842878dd1a319794_TASTE-Full-Logo-Filled-White-Pink%404x%20(1).png"
+    },
+    {
+      "name": "tmrw institute for tomorrow",
+      "logo": "https://cdn.prod.website-files.com/64ba5b3b418a540ade9f6e31/69a08d44fffa11a151b5fd7d_logo-tmrw-h%201.png"
+    }
+  ]
 }

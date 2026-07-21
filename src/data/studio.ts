@@ -150,6 +150,15 @@ export const PRACTICE: Array<{ n: string; label: string; body: string }> = studi
 
 export const BUDGET_RANGES: string[] = studioJson.budgetRanges
 
+export interface PartnerLogo {
+  name: string
+  logo: string
+}
+
+export const TRUSTED_BY: PartnerLogo[] = studioJson.trustedBy
+export const PARTNERS: PartnerLogo[] = studioJson.partners
+export const RNA_STUDIO_URL: string = studioJson.rnaStudioUrl
+
 /* stats derive from the content — adding a project or maker updates them */
 export const STATS: Array<[string, string]> = [
   ['Makers in the room', String(PEOPLE.length).padStart(2, '0')],

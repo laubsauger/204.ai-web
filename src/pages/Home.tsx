@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { MediaStill } from '../components/MediaStill'
 import { useHead } from '../hooks/useHead'
 import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion'
-import { HERO_CHAPTERS, STUDIO } from '../data/studio'
+import { HERO_CHAPTERS, PARTNERS, STUDIO, TRUSTED_BY } from '../data/studio'
 import { trackChapterSelect, trackCta, trackPlayToggle } from '../lib/analytics'
 import styles from './Home.module.css'
 
@@ -131,6 +131,7 @@ export function Home() {
   }, [activeFrame, hasVideo, reducedMotion, advance])
 
   return (
+    <>
     <div className={styles.root}>
       {/* hero media — featured work player + chapter rail */}
       <section className={styles.hero} aria-label={`${STUDIO.name} showreel`}>
@@ -253,5 +254,40 @@ export function Home() {
         </div>
       </section>
     </div>
+
+      {/* below the fold: trusted-by marquee + global partners */}
+      <section className={styles.logos} aria-label="Trusted by">
+        <div className={styles.logosHead}>
+          <span className="t-label">/ TRUSTED BY</span>
+          <span className={styles.logosRule} />
+        </div>
+        <div className={styles.marquee}>
+          <div className={styles.marqueeTrack}>
+            {[...TRUSTED_BY, ...TRUSTED_BY].map((p, i) => (
+              <img
+                key={`${p.name}-${i}`}
+                src={p.logo}
+                alt={i < TRUSTED_BY.length ? p.name : ''}
+                title={p.name}
+                className={styles.logo}
+                loading="lazy"
+                decoding="async"
+                aria-hidden={i >= TRUSTED_BY.length}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className={styles.logosHead}>
+          <span className="t-label">/ GLOBAL PARTNERS & DISTRIBUTION</span>
+          <span className={styles.logosRule} />
+        </div>
+        <div className={styles.partnersRow}>
+          {PARTNERS.map((p) => (
+            <img key={p.name} src={p.logo} alt={p.name} title={p.name} className={styles.logo} loading="lazy" decoding="async" />
+          ))}
+        </div>
+      </section>
+    </>
   )
 }

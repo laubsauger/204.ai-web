@@ -153,6 +153,20 @@
   margin-bottom: 10px;
 }
 
+.rnaLink {
+  display: inline-block;
+  margin-top: 14px;
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--accent-text);
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.15s;
+}
+
+.rnaLink:hover {
+  border-color: var(--accent-text);
+}
+
 .hiringBody {
   font-size: clamp(14px, 1.1vw, 17px);
   color: var(--fg);
