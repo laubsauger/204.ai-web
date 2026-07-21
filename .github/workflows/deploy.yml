@@ -25,7 +25,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
 
       - name: Install dependencies
@@ -35,6 +35,7 @@ jobs:
         run: npm run build
         env:
           SITE_URL: https://studio204-web.web.app
+          VITE_ORGANISM: off  # experiment gated until explicit go (user 2026-07-21)
 
       - name: Deploy to Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@v0
@@ -53,7 +54,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
 
       - name: Install dependencies
@@ -66,6 +67,7 @@ jobs:
         env:
           VITE_BASE: /204.ai-web/
           SITE_URL: https://studio204-web.web.app
+          VITE_ORGANISM: off  # experiment gated until explicit go (user 2026-07-21)
 
       - name: SPA fallback (404.html)
         run: cp dist/index.html dist/404.html

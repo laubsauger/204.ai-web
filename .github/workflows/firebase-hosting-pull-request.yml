@@ -15,12 +15,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
       - run: npm ci
       - run: npm run build
         env:
           SITE_URL: https://studio204-web.web.app
+          VITE_ORGANISM: off  # experiment gated until explicit go (user 2026-07-21)
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
