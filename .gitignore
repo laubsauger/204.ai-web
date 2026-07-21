@@ -15,4 +15,4 @@ npm-debug.log*
 .DS_Store
 *.local
 .lh/
-.env*
+.env*media-src/
