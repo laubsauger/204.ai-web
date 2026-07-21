@@ -72,7 +72,7 @@ export const defaultOrganismConfig: OrganismConfig = {
   },
   behavior: {
     pointerInterest: 0.95,
-    maximumCoreSpeed: 0.05,
+    maximumCoreSpeed: 0.04,
     maximumTipSpeed: 0.2,
     gestureIntervalMin: 4,
     gestureIntervalMax: 14,

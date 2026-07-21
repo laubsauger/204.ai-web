@@ -29,6 +29,9 @@ type Swing = { active: boolean; fromX: number; fromY: number; toX: number; toY: 
 
 const LEGS = 3
 const SWING_TIME = 0.26
+/* jumps off until walking earns trust — they read as erratic zips
+   (user 2026-07-21); re-enable for true gap-crossings later */
+const JUMP_ENABLED = false
 
 export class OrganismSimulation {
   private restLengths: Float32Array
@@ -504,8 +507,7 @@ export class OrganismSimulation {
         !this.route ||
         Math.hypot(ix - this.routeGoalX, iy - this.routeGoalY) > Math.max(cfg.navigation.rerouteThreshold, 0.15) ||
         exhaustedFar ||
-        (starved && this.time - this.lastRouteTime > 2) ||
-        this.time - this.lastRouteTime > 6
+        (starved && this.time - this.lastRouteTime > 2)
       if (stale) {
         if (starved) this.lastProgressTime = this.time
         this.route = this.nav.route(p.posX[0], p.posY[0], ix, iy, this.hasLOS, starved ? undefined : this.route?.points)
@@ -645,7 +647,7 @@ export class OrganismSimulation {
       else if (this.state === 'settle' && inState > 1) this.setState('rest')
       else if ((this.state === 'settle' || this.state === 'sniff') && goalDist > 0.35 && !this.sniffing) this.setState('pursue')
       else if (this.state === 'sniff' && !this.sniffing && inState > 1) this.setState('pursue')
-      if (this.state === 'pursue' && this.route && this.routeIdx < this.route.points.length) {
+      if (JUMP_ENABLED && this.state === 'pursue' && this.route && this.routeIdx < this.route.points.length) {
         const wp = this.route.points[this.routeIdx]
         if (this.surfaceDist(wp.x, wp.y) > this.maxReach * 0.6) {
           let land: Vec2 | null = null
@@ -785,8 +787,8 @@ export class OrganismSimulation {
         const dip = 0.02 * Math.exp(-(this.time - this.lastPlantTime) / 0.35)
         const crouch = this.state === 'sniff' ? 0.09 : 0
         const hover = this.maxReach * (0.3 - crouch + Math.sin(this.time * 0.11 * Math.PI * 2 + 0.7) * 0.02 - speedNorm * 0.08 - dip)
-        const clampE = anyPlant ? 0.05 : 0.14
-        const gainE = anyPlant ? 1.6 : 3.2
+        const clampE = anyPlant ? 0.05 : 0.07
+        const gainE = anyPlant ? 1.6 : 1.2
         const err = Math.max(-clampE, Math.min(clampE, sd - hover))
         p.posX[0] -= surfNX * err * Math.min(1, dt * gainE)
         p.posY[0] -= surfNY * err * Math.min(1, dt * gainE)
@@ -835,9 +837,12 @@ export class OrganismSimulation {
       const dx = p.posX[0] - p.prevX[0]
       const dy = p.posY[0] - p.prevY[0]
       const dd = Math.hypot(dx, dy)
-      if (dd > 0.02) {
-        p.posX[0] = p.prevX[0] + (dx / dd) * 0.02
-        p.posY[0] = p.prevY[0] + (dy / dd) * 0.02
+      // absolute speed limit — the final word on core velocity (§23/§24):
+      // ~1.8x nominal walking speed, whatever any subsystem computed
+      const speedCap = S === 'jump' ? 0.02 : cfg.behavior.maximumCoreSpeed * this.viewportAspect * dt * 1.8
+      if (dd > speedCap) {
+        p.posX[0] = p.prevX[0] + (dx / dd) * speedCap
+        p.posY[0] = p.prevY[0] + (dy / dd) * speedCap
       }
     }
     this.anchorX = Math.min(Math.max(this.anchorX, 0.14), this.viewportAspect - 0.14)
@@ -865,7 +870,7 @@ export class OrganismSimulation {
         if (!pl.active) continue
         const rootI = p.indexOf(a, 0)
         const stretch = Math.hypot(pl.x - p.posX[rootI], pl.y - p.posY[rootI])
-        const bad = !this.bridgeClear(p.posX[rootI], p.posY[rootI], pl.x, pl.y) || stretch > this.chainLen[a] * 1.3 || !inRange
+        const bad = !this.bridgeClear(p.posX[rootI], p.posY[rootI], pl.x, pl.y) || stretch > this.chainLen[a] * 1.3
         const behind = (pl.x - p.posX[0]) * travelDirX + (pl.y - p.posY[0]) * travelDirY < -this.chainLen[a] * 0.3
         const gait = S === 'pursue' && (stretch > this.chainLen[a] * 1.06 || behind) && this.time - this.lastReleaseTime > 0.8
         if (bad || gait || a === forceStep) {

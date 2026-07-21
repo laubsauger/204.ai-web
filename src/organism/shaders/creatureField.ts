@@ -187,15 +187,15 @@ export function buildOutputNodes(opts: {
   const m1 = simPos.x.mul(34).add(time.mul(0.05)).sin()
   const m2 = simPos.y.mul(29).sub(time.mul(0.037)).sin()
   const mottle = m1.mul(m2).mul(0.5).add(0.5)
-  const interiorBase = 1 - opts.internalShadingStrength * 1.7 // deep interior (user: way darker)
+  const interiorBase = 1 - opts.internalShadingStrength * 2.0 // deep interior (user: darker still)
   /* contact-pressure highlight (§35) */
   const press = float(1).sub(smoothstep(0, R * 0.35, boundaryD.abs())).mul(coverageRaw).mul(0.1)
   const tone = float(interiorBase)
     .add(rim.mul(1 - interiorBase))
-    .add(limbCore.mul(0.2))
+    .add(limbCore.mul(0.15))
     .sub(mottle.mul(0.08))
     .add(press)
-    .clamp(0.14, 1)
+    .clamp(0.08, 1)
   const shaded = vec3(tone)
   /* proximity glow: ONLY the nearest tip heats toward the accent
      (#c9442b) as it nears the cursor's touch radius — localized want */
