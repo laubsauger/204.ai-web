@@ -39,15 +39,14 @@
   -webkit-backdrop-filter: blur(5px);
 }
 
-/* any interactive surface without a label — open ring */
+/* any interactive surface without a label — small open ring; inverts like
+   the dot so it never covers the text underneath */
 .ring {
-  width: 36px;
-  height: 36px;
-  mix-blend-mode: normal;
-  background: rgba(10, 10, 10, 0.45);
-  border: 1px solid rgba(236, 236, 236, 0.85);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  width: 22px;
+  height: 22px;
+  mix-blend-mode: difference;
+  background: transparent;
+  border: 1px solid var(--fg);
 }
 
 /* text fields keep the native caret; the dot steps back */
