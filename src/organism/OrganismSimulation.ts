@@ -260,17 +260,15 @@ export class OrganismSimulation {
       this.intentY -= this.normal2.y * pullIn
     }
     const target = { x: this.intentX, y: this.intentY }
-    // heavy body: bounded approach speed (§23: 2–12% viewport width/s)
+    // travel INTENT only — the body does not self-propel; planted feet
+    // pull it (gait causality, user 2026-07-21: walker, not dragged jelly)
     const maxStep = this.config.behavior.maximumCoreSpeed * this.viewportAspect * dt
     const tdx = target.x - p.posX[0]
     const tdy = target.y - p.posY[0]
     const tlen = Math.hypot(tdx, tdy)
-    let step = Math.min(tlen * dt * 1.2, maxStep)
-    if (tlen > 0.08) step = Math.max(step, maxStep * 0.6) // hungry: keep closing
-    if (tlen > 0.015) {
-      p.posX[0] += (tdx / tlen) * step
-      p.posY[0] += (tdy / tlen) * step
-    }
+    const moving = tlen > 0.05
+    const travelDirX = moving ? tdx / tlen : 0
+    const travelDirY = moving ? tdy / tlen : 0
 
     // ---- surface rest + planting (walking substrate — §20/§22) ----
     {
@@ -306,6 +304,26 @@ export class OrganismSimulation {
     }
     const wantPlant = new Set<number>()
     if (inRange) for (let a = 0; a < Math.min(4, p.appendageCount); a++) wantPlant.add(a)
+    // stride clock: while traveling, the most-behind planted foot lifts
+    // every ~0.55s and re-plants ahead — visible stepping, not dragging
+    if (moving && this.time - this.lastReleaseTime > 0.55) {
+      let worst = -1
+      let worstDot = Infinity
+      for (let a = 0; a < Math.min(4, p.appendageCount); a++) {
+        const pl = this.plants[a]
+        if (!pl.active) continue
+        const dot = (pl.x - p.posX[0]) * travelDirX + (pl.y - p.posY[0]) * travelDirY
+        if (dot < worstDot) {
+          worstDot = dot
+          worst = a
+        }
+      }
+      if (worst >= 0 && worstDot < this.chainLen[worst] * 0.25) {
+        this.plants[worst].active = false
+        this.lastReleaseTime = this.time
+      }
+    }
+
     for (let a = 0; a < p.appendageCount; a++) {
       const plant = this.plants[a]
       const rootI = p.indexOf(a, 0)
@@ -329,7 +347,11 @@ export class OrganismSimulation {
         let ty = p.posY[tipI]
         const tangX = -surfNY
         const tangY = surfNX
-        const lead = Math.sign(tangX * this.coreVelX + tangY * this.coreVelY) * this.chainLen[a] * 0.3
+        // traveling: step AHEAD along the travel direction; idle: spread
+        // into a wide stable stance (outer legs out, inner legs under)
+        const lead = moving
+          ? Math.sign(tangX * travelDirX + tangY * travelDirY || 1) * this.chainLen[a] * 0.55
+          : (a < 2 ? -1 : 1) * this.chainLen[a] * 0.42
         tx += tangX * lead
         ty += tangY * lead
         for (let it = 0; it < 3; it++) {
@@ -546,6 +568,39 @@ export class OrganismSimulation {
     this.coreVelX += (cvx - this.coreVelX) * Math.min(1, dt * 3)
     this.coreVelY += (cvy - this.coreVelY) * Math.min(1, dt * 3)
 
+    // locomotion: the body is PULLED by its planted anchors toward their
+    // centroid + a travel lead — speed emerges from the step cadence
+    if (tlen > 0.015) {
+      let planted = 0
+      let sumX = 0
+      let sumY = 0
+      for (let a = 0; a < Math.min(4, p.appendageCount); a++) {
+        const pl = this.plants[a]
+        if (!pl.active) continue
+        planted++
+        sumX += pl.x
+        sumY += pl.y
+      }
+      if (planted > 0) {
+        const pullX = sumX / planted + travelDirX * this.maxReach * 0.62 - surfNX * this.maxReach * -0.28
+        const pullY = sumY / planted + travelDirY * this.maxReach * 0.62 - surfNY * this.maxReach * -0.28
+        let mx = (pullX - p.posX[0]) * Math.min(1, dt * 2.1)
+        let my = (pullY - p.posY[0]) * Math.min(1, dt * 2.1)
+        const mlen = Math.hypot(mx, my)
+        const cap = maxStep * 1.35
+        if (mlen > cap) {
+          mx = (mx / mlen) * cap
+          my = (my / mlen) * cap
+        }
+        p.posX[0] += mx
+        p.posY[0] += my
+      } else {
+        // no feet down (free space) — slow direct drift only
+        p.posX[0] += travelDirX * maxStep * 0.35
+        p.posY[0] += travelDirY * maxStep * 0.35
+      }
+    }
+
     // comfort repulsion ONCE per step (inside the iteration loop it
     // compounds ×iterations and shoves the creature across the page):
     // gentle normal push, tangential motion untouched → boundary sliding
@@ -660,7 +715,10 @@ export class OrganismSimulation {
       const y = p.prevY[i] + (p.posY[i] - p.prevY[i]) * alpha
       p.renderX[i] += (x - p.renderX[i]) * k
       p.renderY[i] += (y - p.renderY[i]) * k
-      p.uniformData[i].set(p.renderX[i], p.renderY[i], p.radius[i], p.activation[i])
+      // core renders at half its physics radius — no head knob (user
+      // 2026-07-21): the visible body is the knot of limb roots + webbing
+      const renderR = i === 0 ? p.radius[i] * 0.5 : p.radius[i]
+      p.uniformData[i].set(p.renderX[i], p.renderY[i], renderR, p.activation[i])
     }
   }
 }
