@@ -16,11 +16,11 @@
   border-radius: 2px;
   display: grid;
   grid-template-columns: minmax(0, 1.55fr) minmax(280px, 1fr);
-  /* flex-fills the viewport between nav and strap; clamped so it never
-     collapses or balloons */
+  /* flex-fills the viewport between nav and strap; the width-based cap
+     keeps the player area near 16:9 so footage isn't over-cropped */
   flex: 1 1 auto;
   min-height: 320px;
-  max-height: 620px;
+  max-height: min(620px, calc(min(100vw, 1720px) * 0.33));
 }
 
 .still {
@@ -295,7 +295,7 @@
 
 /* ─── strap ─── */
 .strap {
-  padding: 18px 28px 26px;
+  padding: 34px 28px 28px;
 }
 
 .strapType {
