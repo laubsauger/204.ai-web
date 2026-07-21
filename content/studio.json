@@ -1,0 +1,56 @@
+{
+  "name": "204",
+  "suffix": "NO-CONTENT",
+  "tag": "Creative technology studio for image, motion & interaction",
+  "logoUrl": "https://cdn.prod.website-files.com/64ba5b3b418a540ade9f6e31/65b7a18446d60bb65c1641e7_204white.png",
+  "contact": {
+    "email": "Hello@204.ai",
+    "studio": "RnA Studio — R. Ferreira Lapa 12A, 1150-157 Lisboa",
+    "instagram": "@204nocontent.ai",
+    "instagramUrl": "https://www.instagram.com/204nocontent.ai/",
+    "linkedin": "204-no-content",
+    "linkedinUrl": "https://www.linkedin.com/company/204-no-content/"
+  },
+  "heroChapters": [
+    "synesthesia",
+    "hulaween",
+    "1n-eeg-mirror",
+    "yard-episode"
+  ],
+  "workCategories": [
+    "interactive",
+    "mapping",
+    "branded",
+    "artistic"
+  ],
+  "budgetRanges": [
+    "< 25k",
+    "25–75k",
+    "75–200k",
+    "200k+",
+    "trade"
+  ],
+  "practice": [
+    {
+      "n": "01",
+      "label": "Experience Design",
+      "body": "We understand your audience, objectives, and environment."
+    },
+    {
+      "n": "02",
+      "label": "System Development",
+      "body": "We define the experience mode, visual identity, and technical setup."
+    },
+    {
+      "n": "03",
+      "label": "Technical Production",
+      "body": "We develop the AI models, interaction logic, and visual worlds."
+    },
+    {
+      "n": "04",
+      "label": "Strategic Consulting",
+      "body": "We deploy, calibrate, and ensure seamless on-site performance."
+    }
+  ],
+  "pillarsCount": "02"
+}

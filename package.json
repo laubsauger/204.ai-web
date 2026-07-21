@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "postbuild": "node --experimental-strip-types scripts/generate-meta.mjs"
+    "postbuild": "node scripts/generate-meta.mjs"
   },
   "dependencies": {
     "@fontsource/archivo-black": "^5.2.5",

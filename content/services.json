@@ -1,0 +1,213 @@
+{
+  "content": [
+    {
+      "n": "01",
+      "label": "Branded Work & Campaigns",
+      "scene": "cathedral",
+      "body": "Visual assets and narratives that express brand identity with clarity and impact.",
+      "intro": "Visual assets and narratives that express brand identity with clarity and impact — from single spots to sustained campaigns, produced with AI speed and human direction.",
+      "relatedCat": "branded"
+    },
+    {
+      "n": "02",
+      "label": "Immersive Mapping",
+      "scene": "desert",
+      "body": "High-end visuals and immersive mapping for any environment, theme, or surface.",
+      "intro": "High-end visuals and immersive mapping for any environment, theme or surface — stages, buildings, domes, landscapes.",
+      "relatedCat": "mapping"
+    },
+    {
+      "n": "03",
+      "label": "Artistic Style & Film",
+      "scene": "interior",
+      "body": "Character, motion, or abstract animation and stylistic film built to convey story, emotion, or concept.",
+      "intro": "Character, motion or abstract animation and stylistic film — built to convey story, emotion or concept.",
+      "relatedCat": "artistic"
+    },
+    {
+      "n": "04",
+      "label": "Digital & Archival Preservation",
+      "scene": "water",
+      "body": "Restoration and enhancement of archival photos or footage through advanced AI methods.",
+      "intro": "Restoration and enhancement of archival photos and footage through advanced AI methods — history, kept legible."
+    }
+  ],
+  "interactive": [
+    {
+      "n": "05",
+      "label": "Magic Mirror",
+      "scene": "cathedral",
+      "body": "Real-time AI mirror installation. Touch prompting, custom-trained styles, custom frames — controlled from the Mirror app.",
+      "still": "https://cdn.prod.website-files.com/64ba5b3b418a540ade9f6e31%2F69b3e6a6a71e70fdb9bb5fa9_magic-livingpainting_poster.0000000.jpg",
+      "video": {
+        "webm": "https://cdn.prod.website-files.com/64ba5b3b418a540ade9f6e31%2F69b3e6a6a71e70fdb9bb5fa9_magic-livingpainting_webm.webm",
+        "mp4": "https://cdn.prod.website-files.com/64ba5b3b418a540ade9f6e31%2F69b3e6a6a71e70fdb9bb5fa9_magic-livingpainting_mp4.mp4"
+      },
+      "intro": "One system, multiple experiences: a real-time interactive mirror that transforms your audience and places them at the center of the experience.",
+      "modes": [
+        {
+          "n": "01",
+          "label": "Identity Transformation",
+          "body": "Guests become alternate versions of themselves in real time."
+        },
+        {
+          "n": "02",
+          "label": "Living Art",
+          "body": "Participants step inside and animate iconic or branded artworks."
+        },
+        {
+          "n": "03",
+          "label": "Environment Control",
+          "body": "Movement influences the surrounding visual environment."
+        },
+        {
+          "n": "04",
+          "label": "Game Mode",
+          "body": "Interactive challenges layered into immersive worlds."
+        },
+        {
+          "n": "05",
+          "label": "Neurofeedback",
+          "body": "Brain activity drives responsive live visuals."
+        }
+      ],
+      "features": [
+        {
+          "label": "TOUCH PROMPTING",
+          "body": "Activate prompts by touching an object of your choice."
+        },
+        {
+          "label": "LORA TRAINING",
+          "body": "Artist? Brand? Unique style? We train a LoRA so the mirror keeps your style consistent."
+        },
+        {
+          "label": "CUSTOM FRAMES",
+          "body": "A custom frame around the mirror for a more immersive, brand-consistent experience."
+        },
+        {
+          "label": "MIRROR APP",
+          "body": "Control prompts and record your experience from the Mirror app."
+        }
+      ],
+      "relatedCat": "interactive"
+    },
+    {
+      "n": "06",
+      "label": "AI Photo Booth",
+      "scene": "interior",
+      "body": "Generative photo booth for events — branded, styled, instantly shareable.",
+      "still": "https://cdn.prod.website-files.com/64ba5b3b418a540ade9f6e31%2F69b3e614ee5d9448d002cbb6_photobooth_poster.0000000.jpg",
+      "video": {
+        "webm": "https://cdn.prod.website-files.com/64ba5b3b418a540ade9f6e31%2F69b3e614ee5d9448d002cbb6_photobooth_webm.webm",
+        "mp4": "https://cdn.prod.website-files.com/64ba5b3b418a540ade9f6e31%2F69b3e614ee5d9448d002cbb6_photobooth_mp4.mp4"
+      },
+      "intro": "Instant transformations, branded take-home moments: a real-time AI portrait experience that turns guests into custom identities — built for festivals, brand activations, conferences and cultural events.",
+      "modes": [
+        {
+          "n": "01",
+          "label": "Custom Worlds & Characters",
+          "body": "Visual worlds and AI characters aligned with your identity or campaign narrative."
+        },
+        {
+          "n": "02",
+          "label": "Branded Booth & Interface",
+          "body": "The booth and its interface carry your brand end to end."
+        },
+        {
+          "n": "03",
+          "label": "Print & Digital Formats",
+          "body": "Print framing plus digital formats, ready to share."
+        },
+        {
+          "n": "04",
+          "label": "Take-Home Souvenir",
+          "body": "Every portrait leaves as a branded memory in hand."
+        }
+      ],
+      "features": [
+        {
+          "label": "TOUCH PROMPTING",
+          "body": "Activate prompts by touching an object of your choice."
+        },
+        {
+          "label": "LORA TRAINING",
+          "body": "Artist? Brand? Unique style? We train a LoRA so the mirror keeps your style consistent."
+        },
+        {
+          "label": "CUSTOM FRAMES",
+          "body": "A custom frame around the mirror for a more immersive, brand-consistent experience."
+        },
+        {
+          "label": "MIRROR APP",
+          "body": "Control prompts and record your experience from the Mirror app."
+        }
+      ],
+      "relatedCat": "interactive"
+    },
+    {
+      "n": "07",
+      "label": "Live Visuals",
+      "scene": "water",
+      "body": "AI-driven VJing and live visuals for stages, performances and immersive spaces.",
+      "still": "https://cdn.prod.website-files.com/64ba5b3b418a540ade9f6e31%2F69b3e5faece24832f8313ed4_livevisualsss_poster.0000000.jpg",
+      "video": {
+        "webm": "https://cdn.prod.website-files.com/64ba5b3b418a540ade9f6e31%2F69b3e5faece24832f8313ed4_livevisualsss_webm.webm",
+        "mp4": "https://cdn.prod.website-files.com/64ba5b3b418a540ade9f6e31%2F69b3e5faece24832f8313ed4_livevisualsss_mp4.mp4"
+      },
+      "intro": "Real-time worlds at architectural scale: stages, buildings, landscapes and performers become responsive visual environments — from intimate venues to cliffs and full facades.",
+      "modes": [
+        {
+          "n": "01",
+          "label": "Stage Visuals",
+          "body": "Real-time visuals that amplify musical energy and live performance."
+        },
+        {
+          "n": "02",
+          "label": "Architectural Mapping",
+          "body": "Large-scale projection transforming buildings and structures."
+        },
+        {
+          "n": "03",
+          "label": "Responsive Atmospheres",
+          "body": "Environments reacting to music, movement, weather data, audience interaction and performance energy."
+        }
+      ],
+      "relatedCat": "interactive"
+    },
+    {
+      "n": "08",
+      "label": "Augmented Art",
+      "scene": "desert",
+      "body": "Living paintings and augmented artworks for museums, galleries and artist collaborations.",
+      "still": "https://cdn.prod.website-files.com/64ba5b3b418a540ade9f6e31%2F69b3e7021f89aaf243863571_Augmented%202_poster.0000000.jpg",
+      "video": {
+        "webm": "https://cdn.prod.website-files.com/64ba5b3b418a540ade9f6e31%2F69b3e7021f89aaf243863571_Augmented%202_webm.webm",
+        "mp4": "https://cdn.prod.website-files.com/64ba5b3b418a540ade9f6e31%2F69b3e7021f89aaf243863571_Augmented%202_mp4.mp4"
+      },
+      "intro": "Added motion, added story, added depth: physical artworks brought to life through real-time generative layers — extending narrative and atmosphere without altering the original piece.",
+      "modes": [
+        {
+          "n": "01",
+          "label": "Paintings",
+          "body": "Subtle generative layers set static artworks in motion."
+        },
+        {
+          "n": "02",
+          "label": "Large-Scale Murals",
+          "body": "Architectural augmentations expanding narrative across entire walls."
+        },
+        {
+          "n": "03",
+          "label": "Natural Landscapes",
+          "body": "Site-specific layers adapted to organic textures and formations."
+        },
+        {
+          "n": "04",
+          "label": "Sculptural Forms",
+          "body": "Projection-mapped systems wrapping three-dimensional objects."
+        }
+      ],
+      "relatedCat": "interactive"
+    }
+  ]
+}

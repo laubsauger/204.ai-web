@@ -13,6 +13,7 @@ Ship production static site for studio "204 · NO-CONTENT". Implement design/ Di
 - C7: prototype is fixed 1280×820 artboard → production must be responsive. Desktop = design fidelity; ≤768px = adapted layout, no horizontal scroll.
 - C8: contact form client-side only (no backend). Submit → success state, same as prototype. mailto fallback link.
 - C9: content (works, services, people, copy) verbatim from design/shared.jsx + direction-a.jsx. One data module. SUPERSEDED by C10 for real content.
+- C11: content lives in content/*.json (works/services/people/studio) — code carries no copy. src/data/studio.ts = typed schema + derivations (ids, NC codes, slugs, stats, hero chapters, categories); scripts/generate-meta.mjs reads the same JSON for share meta + sitemap. CMS later = point it at content/.
 - C10: real content source = 204-no-content.webflow.io scrape (snapshot design/scrape/extracted.json). Copy ADAPTED into Night Shift voice — inform, don't transplant; no invented facts. Design/layout unchanged.
 
 ## §I interfaces
@@ -57,6 +58,7 @@ T16|x|verify: build+lint, V6 rerun, screenshots desktop+mobile, V1 grep|V1,V5,V6
 T17|x|full catalog: all 31 scraped projects in ledger, codes reversed (highest=newest), posters where available|C10
 T18|x|wide-screen pass: 1720px shell, nav/chapter/label scale-up, strap redesign (no em dash), wider intro, cursor-anchored hover preview, /work header merged (label+count, no LEDGER slab), chapter category tags|V11,V13,C7
 T19|x|SEO pass: og:image, JSON-LD Organization, noscript fallback, semantic h1 audit; sitemap deferred until final domain|I.seo
+T23|x|content architecture: extract all data to content/*.json, studio.ts becomes typed loader w/ derived fields, stats/sitemap/meta/counts auto-update from content edits, README editing guide|C11
 T22|x|share meta + analytics: og/twitter tags per route (client via useHead + static per-route HTML at build for non-JS scrapers → also fixes GH Pages deep-link 404), sitemap.xml (SITE_URL env), GA4 wired to existing property w/ SPA page_views + named events (cta_click, generate_lead, select_chapter, reel_play_toggle, video_open, map_load, social_click, filter_work)|I.seo,V10
 T21|x|service detail pages /services/:slug: cards click through (READ MORE affordance), product loop hero video, modes list, feature grid, related-work links by category, prev/next pager, 404 on unknown slug; copy from scraped product pages|I.routes,C10,V10
 T20|x|work detail pages /work/:slug: ledger rows click through; hero media, meta grid, longform copy (scraped where available), click-to-load youtube (RUBr/Venom), photo gallery (Hulaween/1N), prev/next nav, unknown slug → 404|I.routes,C10,V4,V10

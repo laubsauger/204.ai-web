@@ -4,15 +4,31 @@
 // serves deep links with HTTP 200 instead of the 404 fallback.
 // Also emits sitemap.xml + a robots.txt Sitemap line when SITE_URL is set.
 //
-// Run: node --experimental-strip-types scripts/generate-meta.mjs
-// (type stripping lets us import the studio data directly)
+// Reads content/*.json directly (same source the app loads through
+// src/data/studio.ts) — content edits automatically flow into the sitemap
+// and per-route share meta on the next build.
 
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { WORKS, SERVICES_ALL, PEOPLE } from '../src/data/studio.ts'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
+const content = (f) => JSON.parse(readFileSync(join(root, 'content', f), 'utf8'))
+
+/* derivation mirror of src/data/studio.ts — keep in sync */
+const slugify = (t) =>
+  t
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+
+const rawWorks = content('works.json')
+const WORKS = rawWorks.map((w) => ({ ...w, slug: slugify(w.title) }))
+const servicesJson = content('services.json')
+const SERVICES_ALL = [...servicesJson.content, ...servicesJson.interactive].map((s) => ({ ...s, slug: slugify(s.label) }))
+const PEOPLE = content('people.json').map((p) => ({ ...p, slug: slugify(p.name) }))
 const dist = join(root, 'dist')
 // e.g. https://laubsauger.github.io/204.ai-web — no trailing slash
 const SITE_URL = (process.env.SITE_URL ?? '').replace(/\/$/, '')
