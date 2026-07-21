@@ -86,6 +86,9 @@ export async function mountOrganism(
   renderer.start((timeMs) => {
     controller.beforeFrame(timeMs)
   })
+  if (import.meta.env.DEV) {
+    ;(window as unknown as Record<string, unknown>).__organismDebug = { controller }
+  }
 
   return {
     capabilities,

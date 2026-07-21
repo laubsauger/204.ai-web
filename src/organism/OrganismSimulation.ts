@@ -31,6 +31,8 @@ export class OrganismSimulation {
   private time = 0
   private normal: Vec2 = { x: 0, y: 0 }
   private normal2: Vec2 = { x: 0, y: 0 }
+  private smNX = 0
+  private smNY = -1
   /* padded obstacle rects, refreshed by the controller after collection */
   obstacles: SimRect[] = []
   obstacleRounding = 0.02
@@ -72,7 +74,12 @@ export class OrganismSimulation {
   /* planted tip anchors — the walking substrate (§22, user 2026-07-21) */
   private plants: Array<{ x: number; y: number; active: boolean }> = []
   private lastReleaseTime = -10
+  dbgMoving = false
+  dbgGoalDist = 0
+  dbgTravel = [0, 0]
+  dbgStride = ''
   private lastPlantTime = -10
+  private surgeUntil = -10
 
   /** Page anchoring: on scroll the whole state shifts so the creature stays
       glued to the DOCUMENT, then walks back into view organically. */
@@ -130,6 +137,12 @@ export class OrganismSimulation {
         this.pointerX = this.pointerRawX
         this.pointerY = this.pointerRawY
         this.pointerInit = true
+        this.pointerRampStart = this.time
+        // attention snaps to its start — no cross-screen fly-in
+        p.posX[1] = this.pointerRawX
+        p.posY[1] = this.pointerRawY
+        p.prevX[1] = p.posX[1]
+        p.prevY[1] = p.posY[1]
       }
       const k = 1 - Math.exp((-dt / 0.12) * Math.LN2)
       this.pointerX += (this.pointerRawX - this.pointerX) * k
@@ -150,9 +163,15 @@ export class OrganismSimulation {
     // surface probe first — intention + corner-following both need it
     const sd = this.surfaceDist(p.posX[0], p.posY[0])
     const inRange = sd < this.maxReach * 1.05
-    const n = this.surfaceNormalInto(p.posX[0], p.posY[0], this.normal)
-    const surfNX = n.x
-    const surfNY = n.y
+    const nRaw = this.surfaceNormalInto(p.posX[0], p.posY[0], this.normal)
+    // smooth the normal: near-equidistant faces flip the raw gradient and
+    // thrash roles/plants — the creature re-orients, it never snaps
+    const nk = Math.min(1, dt * 2.5)
+    this.smNX += (nRaw.x - this.smNX) * nk
+    this.smNY += (nRaw.y - this.smNY) * nk
+    const nl = Math.hypot(this.smNX, this.smNY) || 1
+    const surfNX = this.smNX / nl
+    const surfNY = this.smNY / nl
 
     // core intention: idle orbit around the anchor; when the pointer is
     // present and outside a dead zone, lean toward a point short of it —
@@ -168,10 +187,15 @@ export class OrganismSimulation {
       if (dist > 0.05) {
         pointerDirX = dx / dist
         pointerDirY = dy / dist
-        const interest = this.config.behavior.pointerInterest
-        // stop short: hold ~0.12 sim units away from the cursor
-        ix = ix * (1 - interest) + (this.pointerX - pointerDirX * 0.09) * interest
-        iy = iy * (1 - interest) + (this.pointerY - pointerDirY * 0.09) * interest
+        // ramp interest over 1.5s after first pointer contact — the load
+        // moment must not yank the creature across the page
+        const ramp = this.pointerRampStart < 0 ? 0 : Math.min(1, (this.time - this.pointerRampStart) / 1.5)
+        const interest = this.config.behavior.pointerInterest * ramp
+        // goal = the pointer ITSELF (stable — a core-relative offset orbits
+        // as the body moves and side-flips routes); stopping short is an
+        // ARRIVAL RADIUS at the core-move stage
+        ix = ix * (1 - interest) + this.pointerX * interest
+        iy = iy * (1 - interest) + this.pointerY * interest
       }
     }
     // torso needs real clearance — a pocket tighter than the body is not a
@@ -180,6 +204,7 @@ export class OrganismSimulation {
     // never per frame (§21); the route feeds the intention, it does not
     // animate the body directly
     this.sniffing = false
+    let finalGoalDist = -1
     let starved = false
     if (this.pointerActive) {
       const dNow = Math.hypot(this.pointerX - p.posX[0], this.pointerY - p.posY[0])
@@ -209,8 +234,9 @@ export class OrganismSimulation {
         this.routeIdx = 0
       }
       const pts = this.route!.points
-      while (this.routeIdx < pts.length && Math.hypot(pts[this.routeIdx].x - p.posX[0], pts[this.routeIdx].y - p.posY[0]) < 0.07) this.routeIdx++
+      while (this.routeIdx < pts.length && Math.hypot(pts[this.routeIdx].x - p.posX[0], pts[this.routeIdx].y - p.posY[0]) < 0.1) this.routeIdx++
       if (this.routeIdx < pts.length) {
+        finalGoalDist = Math.hypot(ix - p.posX[0], iy - p.posY[0]) // before waypoint override
         ix = pts[this.routeIdx].x
         iy = pts[this.routeIdx].y
       }
@@ -266,9 +292,15 @@ export class OrganismSimulation {
     const tdx = target.x - p.posX[0]
     const tdy = target.y - p.posY[0]
     const tlen = Math.hypot(tdx, tdy)
-    const moving = tlen > 0.05
+    // arrival radius vs the FINAL goal — judging it against the current
+    // waypoint deadlocked the gait when a waypoint sat inside the radius
+    const goalDist = finalGoalDist >= 0 ? finalGoalDist : tlen
+    const moving = goalDist > (this.pointerActive ? 0.13 : 0.05)
+    this.dbgMoving = moving
+    this.dbgGoalDist = goalDist
     const travelDirX = moving ? tdx / tlen : 0
     const travelDirY = moving ? tdy / tlen : 0
+    this.dbgTravel = [travelDirX, travelDirY]
 
     // ---- surface rest + planting (walking substrate — §20/§22) ----
     {
@@ -318,7 +350,8 @@ export class OrganismSimulation {
           worst = a
         }
       }
-      if (worst >= 0 && worstDot < this.chainLen[worst] * 0.25) {
+      this.dbgStride = 'worst=' + worst + ' dot=' + (worstDot === Infinity ? 'inf' : worstDot.toFixed(3))
+      if (worst >= 0 && worstDot < this.chainLen[worst] * 0.45) {
         this.plants[worst].active = false
         this.lastReleaseTime = this.time
       }
@@ -327,6 +360,11 @@ export class OrganismSimulation {
     for (let a = 0; a < p.appendageCount; a++) {
       const plant = this.plants[a]
       const rootI = p.indexOf(a, 0)
+      if (plant.active && !this.hasLOS(p.posX[rootI], p.posY[rootI], plant.x, plant.y)) {
+        // root→plant crosses a boundary — the press-cut would sever the
+        // limb and leave a floating foot bubble; let go instead
+        plant.active = false
+      }
       if (plant.active) {
         const stretch = Math.hypot(plant.x - p.posX[rootI], plant.y - p.posY[rootI])
         // release when overstretched or misaligned — but stagger releases
@@ -342,18 +380,21 @@ export class OrganismSimulation {
       if (!plant.active && wantPlant.has(a)) {
         // plant ahead of travel: tip projected onto the surface with a lead
         // along the tangent in the movement direction
-        const tipI = p.indexOf(a, p.jointsPerAppendage - 1)
-        let tx = p.posX[tipI]
-        let ty = p.posY[tipI]
         const tangX = -surfNY
         const tangY = surfNX
-        // traveling: step AHEAD along the travel direction; idle: spread
-        // into a wide stable stance (outer legs out, inner legs under)
-        const lead = moving
-          ? Math.sign(tangX * travelDirX + tangY * travelDirY || 1) * this.chainLen[a] * 0.55
-          : (a < 2 ? -1 : 1) * this.chainLen[a] * 0.42
-        tx += tangX * lead
-        ty += tangY * lead
+        // traveling: the new footfall originates at the ROOT and lands a
+        // real stride ahead; idle: wide stable stance
+        let tx: number
+        let ty: number
+        if (moving) {
+          const sgn = Math.sign(tangX * travelDirX + tangY * travelDirY || 1)
+          tx = p.posX[rootI] + tangX * sgn * this.chainLen[a] * 0.75
+          ty = p.posY[rootI] + tangY * sgn * this.chainLen[a] * 0.75
+        } else {
+          const sgn = a < 2 ? -1 : 1
+          tx = p.posX[rootI] + tangX * sgn * this.chainLen[a] * 0.5
+          ty = p.posY[rootI] + tangY * sgn * this.chainLen[a] * 0.5
+        }
         for (let it = 0; it < 3; it++) {
           const td = this.surfaceDist(tx, ty)
           this.surfaceNormalInto(tx, ty, this.normal)
@@ -365,6 +406,7 @@ export class OrganismSimulation {
           plant.y = ty
           plant.active = true
           this.lastPlantTime = this.time
+          this.surgeUntil = this.time + 0.32 // weight transfer window
         }
       }
     }
@@ -582,10 +624,17 @@ export class OrganismSimulation {
         sumY += pl.y
       }
       if (planted > 0) {
-        const pullX = sumX / planted + travelDirX * this.maxReach * 0.62 - surfNX * this.maxReach * -0.28
-        const pullY = sumY / planted + travelDirY * this.maxReach * 0.62 - surfNY * this.maxReach * -0.28
-        let mx = (pullX - p.posX[0]) * Math.min(1, dt * 2.1)
-        let my = (pullY - p.posY[0]) * Math.min(1, dt * 2.1)
+        // walk rhythm: the body advances in a SURGE right after a foot
+        // plants (weight transfer) and coasts between steps — pulsed
+        // locomotion instead of a rope-drag glide
+        const surge = this.time < this.surgeUntil
+        const gain = moving ? (surge ? 4.2 : 1.6) : 1.2
+        // height is the hover spring's job — a normal term here fights
+        // travel whenever the wall sits behind the direction of motion
+        const pullX = sumX / planted + travelDirX * this.maxReach * 0.5
+        const pullY = sumY / planted + travelDirY * this.maxReach * 0.5
+        let mx = (pullX - p.posX[0]) * Math.min(1, dt * gain)
+        let my = (pullY - p.posY[0]) * Math.min(1, dt * gain)
         const mlen = Math.hypot(mx, my)
         const cap = maxStep * 1.35
         if (mlen > cap) {
@@ -648,12 +697,12 @@ export class OrganismSimulation {
   coreVelX = 0
   coreVelY = 0
   /* smoothed intention target (no LOS-loss snapping) */
-  private intentX = 1.02
-  private intentY = 0.42
+  intentX = 1.02
+  intentY = 0.42
   /* navigation (M8): route to the current desire, rerouted on demand */
   nav: NavigationField | null = null
-  private route: RouteResult | null = null
-  private routeIdx = 0
+  route: RouteResult | null = null
+  routeIdx = 0
   private routeGoalX = 0
   private routeGoalY = 0
   private lastRouteTime = -10
@@ -680,6 +729,7 @@ export class OrganismSimulation {
   private pointerX = 0
   private pointerY = 0
   private pointerInit = false
+  private pointerRampStart = -1
 
   private clear(x: number, y: number, margin: number): boolean {
     if (x < margin || x > this.viewportAspect - margin || y < margin || y > 1 - margin) return false

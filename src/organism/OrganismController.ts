@@ -26,7 +26,7 @@ export class OrganismController {
   private collector: DomObstacleCollector
   private obstacles: CollectedObstacle[] = []
   private lobeSeeds: Array<{ ang: number; dist: number; r: number }>
-  private simulation: OrganismSimulation
+  readonly simulation: OrganismSimulation
   private nav: NavigationField
   private timestep: FixedTimestep
   viewport: Viewport = { width: 1, height: 1 }
