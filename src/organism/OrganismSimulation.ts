@@ -79,6 +79,8 @@ export class OrganismSimulation {
   private stateSince = 0
   private pursueBestDist = Infinity
   private pursueBestAt = 0
+  private failedGoalX = 1e9
+  private failedGoalY = 1e9
   private jumpT = 0
   private jumpDur = 1
   private jumpSX = 0
@@ -142,6 +144,9 @@ export class OrganismSimulation {
 
   invalidateRoute() {
     this.route = null
+    // layout changed — failed goals may be reachable now
+    this.failedGoalX = 1e9
+    this.failedGoalY = 1e9
   }
 
   shiftPageY(dySim: number) {
@@ -500,10 +505,16 @@ export class OrganismSimulation {
     /* state transitions (min durations + hysteresis) */
     const inState = this.time - this.stateSince
     if (this.state !== 'jump') {
+      const goalIsNew = Math.hypot(ix - this.failedGoalX, iy - this.failedGoalY) > 0.15
       if (this.sniffing && this.state !== 'sniff') this.setState('sniff')
-      else if (this.state === 'rest' && goalDist > 0.3 && inState > 1.5) this.setState('pursue')
+      else if (this.state === 'rest' && goalDist > 0.3 && inState > 1.5 && goalIsNew) this.setState('pursue')
       else if (this.state === 'pursue' && goalDist < 0.14 && inState > 1) this.setState('settle')
-      else if (this.state === 'pursue' && inState > 1 && this.time - this.pursueBestAt > 2.5) this.setState('settle')
+      else if (this.state === 'pursue' && inState > 1 && this.time - this.pursueBestAt > 2.5) {
+        // remember the failed goal — no lurching retry loop (§18 hysteresis)
+        this.failedGoalX = ix
+        this.failedGoalY = iy
+        this.setState('settle')
+      }
       else if (this.state === 'settle' && inState > 1) this.setState('rest')
       else if ((this.state === 'settle' || this.state === 'sniff') && goalDist > 0.35 && !this.sniffing) this.setState('pursue')
       if (this.state === 'pursue' && this.route && this.routeIdx < this.route.points.length) {
@@ -687,7 +698,8 @@ export class OrganismSimulation {
         const rootI = p.indexOf(a, 0)
         const stretch = Math.hypot(pl.x - p.posX[rootI], pl.y - p.posY[rootI])
         const bad = !this.bridgeClear(p.posX[rootI], p.posY[rootI], pl.x, pl.y) || stretch > this.chainLen[a] * 1.3 || !inRange
-        const gait = S === 'pursue' && stretch > this.chainLen[a] * 1.06 && this.time - this.lastReleaseTime > 0.45
+        const behind = (pl.x - p.posX[0]) * travelDirX + (pl.y - p.posY[0]) * travelDirY < -this.chainLen[a] * 0.3
+        const gait = S === 'pursue' && (stretch > this.chainLen[a] * 1.06 || behind) && this.time - this.lastReleaseTime > 0.45
         if (bad || gait) {
           pl.active = false
           this.lastReleaseTime = this.time
