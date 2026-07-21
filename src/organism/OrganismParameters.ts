@@ -57,15 +57,17 @@ export const defaultOrganismConfig: OrganismConfig = {
     constraintIterations: 6,
     damping: 0.985,
   },
+  /* scale target (user call 2026-07-21): whole creature ≈ ≤2× the home
+     strap type height → torso ~0.07 sim units, limb reach ~0.12-0.2 */
   anatomy: {
     appendageCount: 5,
     jointsPerAppendage: 6,
-    torsoRadius: 0.11,
-    minimumTipRadius: 0.008,
-    maximumTipRadius: 0.035,
+    torsoRadius: 0.04,
+    minimumTipRadius: 0.004,
+    maximumTipRadius: 0.014,
   },
   behavior: {
-    pointerInterest: 0.6,
+    pointerInterest: 0.8,
     maximumCoreSpeed: 0.12,
     maximumTipSpeed: 0.32,
     gestureIntervalMin: 4,
@@ -74,7 +76,8 @@ export const defaultOrganismConfig: OrganismConfig = {
   obstacles: {
     fieldWidth: 256,
     hardClearance: 0.02,
-    comfortClearance: 0.09,
+    /* dense layout — a fat comfort band leaves the creature nowhere to be */
+    comfortClearance: 0.05,
   },
   navigation: {
     gridWidth: 64,

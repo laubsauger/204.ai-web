@@ -81,13 +81,13 @@ T27|x|firebase.json headers: /media/** + /assets/** immutable 1y, html no-cache;
 T28|x|CI: add Firebase deploy job (action-hosting-deploy, service acct secret) alongside GH Pages job; Firebase build base=/ SITE_URL=studio204-web.web.app, canonical/sitemap → Firebase|C13,I.firebase,V16
 T30|x|rendition right-sizing (Lighthouse ~307KB): pipeline +`-p-160`/`-p-320`; partner/nav logos 500→320, maker avatars full→160 eager, MediaStill responsive srcset/sizes (thumb 320, letterbox 800w/1920w pair mirrored in generate-meta preload imagesrcset)|C12,V15
 T31|x|organism M1 canvas+capability: fullscreen canvas in Layout, WebGPURenderer init (webgpu-only, navigator.gpu gate), resize, fixed render loop, blank TSL pass, HMR-safe dispose, lazy mount post-idle|C14,I.organism,V17,V18
-T32|.|organism M2 obstacle mask: data-attr collection (ResizeObserver+scroll+invalidate, dirty-flag), canvas rasterize hard/comfort/weight/tendril channels @256w, coord converters + unit tests, debug mask view|C14,I.organism,V19
-T33|.|organism M3 obstacle SDF: jump-flood compute (seed→ping-pong→resolve→gradient), storage textures, verify alignment vs DOM, debug sdf/gradient views|C14,I.organism
-T34|.|organism M4 static creature field: TSL implicit field — anisotropic torso + lobes, 5 curved tapered limbs (capsule chains, smooth union w/ varied softness), crease/concavity, fwidth AA white silhouette, skeleton debug|C14
-T35|.|organism M5 simulation: fixed-timestep PBD (segment/bend/cohesion/volume constraints, 6 iter), interpolation, damping, pause/resume stable|C14,V19
-T36|.|organism M6 obstacle contact: SDF sampling @ joints/tips/core+predicted, soft repulsion + hard projection, tangential slide, contact debug, no clipping|C14,V17
-T37|.|organism M7 pointer attention: smoothed pointer state, attention vs body targets, dead zones, observe behavior, no direct following|C14
-T38|.|organism M8 navigation: 64×36 cost grid, A* on-demand (⊥ per frame), route smoothing, unreachable → nearest point + tendril probe + withdraw|C14
+T32|x|organism M2 obstacle mask: data-attr collection (ResizeObserver+scroll+invalidate, dirty-flag), canvas rasterize hard/comfort/weight/tendril channels @256w, coord converters + unit tests, debug mask view|C14,I.organism,V19
+T33|x|organism M3 obstacle SDF: jump-flood compute (seed→ping-pong→resolve→gradient), storage textures, verify alignment vs DOM, debug sdf/gradient views|C14,I.organism
+T34|x|organism M4 static creature field: TSL implicit field — anisotropic torso + lobes, 5 curved tapered limbs (capsule chains, smooth union w/ varied softness), crease/concavity, fwidth AA white silhouette, skeleton debug|C14
+T35|x|organism M5 simulation: fixed-timestep PBD (segment/bend/cohesion/volume constraints, 6 iter), interpolation, damping, pause/resume stable|C14,V19
+T36|~|organism M6 obstacle contact: SDF sampling @ joints/tips/core+predicted, soft repulsion + hard projection, tangential slide, contact debug, no clipping|C14,V17
+T37|~|organism M7 pointer attention: smoothed pointer state, attention vs body targets, dead zones, observe behavior, no direct following|C14
+T38|.|organism M8 navigation: 64×36 cost grid, A* on-demand (⊥ per frame), route smoothing, unreachable → nearest point + 1-2 SNIFF tendrils (boundary-crawl: tangent step + SDF snap-back, per-tendril seed, subtle grasp — user 2026-07-21) + withdraw|C14
 T39|.|organism M9 locomotion+idle: anchor cycle crawl, state machine (Rest/Observe/Reach/Crawl/Brace/Settle/Withdraw w/ hysteresis), breathing 4-9s, gestures 4-14s seeded|C14,V19
 T40|.|organism M10 polish: quality modes high/balanced/low, reduced-motion mode, profiling (≤3ms GPU target), param tuning, debug stripped from prod|C14,V18,V19
 T29|x|verify sprint: build+lint, V4 grep empty, V6 rerun, player-probe, V15 size audit, curl header check both hosts, both deploys green|V4,V5,V6,V14,V15,V16

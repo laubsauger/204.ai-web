@@ -12,5 +12,7 @@ export type OrganismCapabilities = {
 
 export type OrganismHandle = {
   capabilities: OrganismCapabilities
+  /** Re-query [data-organism-obstacle] elements (route changes). */
+  rescanObstacles: () => void
   dispose: () => void
 }

@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>organism lab</title>
+    <style>
+      * { margin: 0; box-sizing: border-box; }
+      html, body { height: 100%; }
+      body { background: #0a0a0a; color: #ececec; font: 12px/1.4 monospace; overflow: hidden; }
+      .organism-background { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+      .box {
+        position: fixed; z-index: 1; border: 1px solid rgba(236,236,236,0.3);
+        background: rgba(20,20,20,0.9); display: grid; place-items: center;
+      }
+      #box1 { left: 38%; top: 34%; width: 24%; height: 32%; }
+      #hud { position: fixed; left: 12px; top: 10px; z-index: 2; color: rgba(236,236,236,0.6); }
+      a { color: inherit; }
+    </style>
+  </head>
+  <body>
+    <div id="hud">
+      organism lab — views:
+      <a href="?organism=final">final</a> · <a href="?organism=outline">outline</a> ·
+      <a href="?organism=mask">mask</a> · <a href="?organism=sdf">sdf</a> ·
+      <a href="?organism=skeleton">skeleton</a> · <a href="?organism=field">field</a>
+    </div>
+    <div class="box" id="box1" data-organism-obstacle data-organism-padding="20">obstacle</div>
+    <div class="organism-background" id="mount" aria-hidden="true"></div>
+    <script type="module" src="/src/organism-lab.ts"></script>
+  </body>
+</html>

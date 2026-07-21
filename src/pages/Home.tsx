@@ -139,7 +139,7 @@ export function Home() {
     <>
     <div className={styles.root}>
       {/* hero media — featured work player + chapter rail */}
-      <section className={styles.hero} aria-label={`${STUDIO.name} showreel`}>
+      <section className={styles.hero} aria-label={`${STUDIO.name} showreel`} data-organism-obstacle data-organism-padding="20">
         <div
           className={`${styles.still} anim-media`}
           data-cursor={hasPlayer ? (isPaused ? 'PLAY' : 'PAUSE') : undefined}
@@ -242,19 +242,21 @@ export function Home() {
       </section>
 
       {/* big type strap */}
+      {/* organism obstacles: mark the CONTENT blocks, not the full-width
+          section — the creature needs the negative space between them */}
       <section className={styles.strap}>
-        <h1 className={`t-display ${styles.strapType}`}>
+        <h1 className={`t-display ${styles.strapType}`} data-organism-obstacle data-organism-padding="24">
           HUMAN FIRST<span style={{ color: 'var(--dim)' }}>.</span>
           <br />
           <span style={{ color: 'var(--dim)' }}>AI AS</span> <span style={{ color: 'var(--accent)' }}>TOOL</span>
           <span style={{ color: 'var(--dim)' }}>.</span>
         </h1>
         <div className={`${styles.strapRow} anim-fade`}>
-          <p className={`t-mono ${styles.intro}`}>
+          <p className={`t-mono ${styles.intro}`} data-organism-obstacle data-organism-padding="20">
             204 is a creative technology studio working at the intersection of AI, motion, identity and live
             environments. Based at RnA Studio, Lisbon — operating everywhere there's a signal.
           </p>
-          <Link to="/work" className={`t-mono ${styles.cta}`} onClick={() => trackCta('explore_work')}>
+          <Link to="/work" className={`t-mono ${styles.cta}`} onClick={() => trackCta('explore_work')} data-organism-obstacle data-organism-padding="20">
             EXPLORE OUR WORK
             <span className={styles.ctaArrow}>→</span>
           </Link>
@@ -268,13 +270,15 @@ export function Home() {
           <span className="t-label">/ TRUSTED BY</span>
           <span className={styles.logosRule} />
         </div>
-        <LogoMarquee items={TRUSTED_BY} />
+        <div data-organism-obstacle data-organism-padding="14" data-organism-weight="0.6" data-organism-allow-tendrils="true">
+          <LogoMarquee items={TRUSTED_BY} />
+        </div>
 
         <div className={styles.logosHead}>
           <span className="t-label">/ GLOBAL PARTNERS & DISTRIBUTION</span>
           <span className={styles.logosRule} />
         </div>
-        <div className={styles.partnersRow}>
+        <div className={styles.partnersRow} data-organism-obstacle data-organism-padding="14" data-organism-weight="0.6" data-organism-allow-tendrils="true">
           {PARTNERS.map((p) => (
             <PartnerMark key={p.name} item={p} />
           ))}

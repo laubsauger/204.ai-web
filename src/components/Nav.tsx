@@ -14,7 +14,7 @@ const ITEMS = [
 
 export function Nav() {
   return (
-    <header className={styles.root}>
+    <header className={styles.root} data-organism-obstacle data-organism-padding="12" data-organism-weight="2">
       <div className={styles.inner}>
       <Link to="/" className={styles.logo} aria-label="204 · NO-CONTENT — home">
         <img

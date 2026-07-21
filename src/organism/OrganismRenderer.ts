@@ -1,11 +1,13 @@
-// Renderer layer (SPEC C14): owns the WebGPURenderer, a fullscreen ortho
-// quad and the TSL output pass. M1 scope: blank transparent pass + an
-// opt-in test pattern (?organism=test) proving the pipeline end to end.
-// Simulation/behavior never live here.
+// Renderer layer (SPEC C14): owns the WebGPURenderer, the fullscreen ortho
+// quad and the TSL creature-field pass. Debug views (dev only) switch via
+// the debugView uniform. No simulation or DOM logic lives here.
 
 import * as THREE from 'three/webgpu'
-import { float, uv, vec3, length, smoothstep, time, uniform } from 'three/tsl'
+import { uniform, uv, vec2 } from 'three/tsl'
 import type { OrganismConfig } from './OrganismParameters'
+import { buildOutputNodes, creatureDistance, makeCreatureFieldUniforms, type CreatureFieldUniforms } from './shaders/creatureField'
+import type { ParticleBuffer } from './simulation/ParticleBuffer'
+import { LOBE_COUNT, CREASE_COUNT } from './OrganismController'
 
 export class OrganismRenderer {
   private renderer: THREE.WebGPURenderer
@@ -13,54 +15,82 @@ export class OrganismRenderer {
   private camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1)
   private material: THREE.MeshBasicNodeMaterial
   private geometry = new THREE.PlaneGeometry(2, 2)
-  private config: OrganismConfig
-  /* viewport aspect (width / height) — simulation space is x:[0,aspect] y:[0,1] */
   readonly aspect = uniform(1)
+  readonly viewportHeightPx = uniform(1000)
+  /* 0 final · 1 mask · 2 sdf · 3 field · 4 skeleton (dev only) */
+  readonly debugView = uniform(0)
+  readonly fieldUniforms: CreatureFieldUniforms
 
-  private constructor(renderer: THREE.WebGPURenderer, config: OrganismConfig, testPattern: boolean) {
+  constructor(
+    renderer: THREE.WebGPURenderer,
+    private config: OrganismConfig,
+    particles: ParticleBuffer,
+    lobeData: THREE.Vector4[],
+    creaseData: THREE.Vector4[],
+    maskTex: THREE.Texture,
+    sdfTex: THREE.Texture,
+  ) {
     this.renderer = renderer
-    this.config = config
+    this.fieldUniforms = makeCreatureFieldUniforms(particles, lobeData, creaseData)
 
-    this.material = new THREE.MeshBasicNodeMaterial({
-      transparent: true,
-      depthTest: false,
-      depthWrite: false,
+    // simulation space: x [0,aspect], y [0,1], bottom-left — uv() is already
+    // bottom-left on the fullscreen quad
+    const uvNode = uv()
+    const simPos = vec2(uvNode.x.mul(this.aspect), uvNode.y)
+
+    const layout = {
+      appendageCount: particles.appendageCount,
+      jointsPerAppendage: particles.jointsPerAppendage,
+      lobeCount: LOBE_COUNT,
+      creaseCount: CREASE_COUNT,
+      torsoRadius: config.anatomy.torsoRadius,
+      indexOf: (a: number, j: number) => particles.indexOf(a, j),
+    }
+    const distance = creatureDistance(simPos, this.fieldUniforms, layout)
+
+    const { colorNode, opacityNode } = buildOutputNodes({
+      distance,
+      maskTex,
+      sdfTex,
+      uvNode,
+      simPos,
+      viewportHeightPx: this.viewportHeightPx,
+      debugView: this.debugView,
+      particles: this.fieldUniforms.particles,
+      particleCount: particles.count,
+      opacity: config.appearance.opacity,
+      edgeSoftnessPx: config.appearance.edgeSoftnessPx,
+      includeDebug: import.meta.env.DEV,
     })
-    this.material.colorNode = vec3(1, 1, 1)
-    this.material.opacityNode = testPattern ? this.testPatternNode() : float(0)
+
+    this.material = new THREE.MeshBasicNodeMaterial({ transparent: true, depthTest: false, depthWrite: false })
+    this.material.colorNode = colorNode
+    this.material.opacityNode = opacityNode
 
     const quad = new THREE.Mesh(this.geometry, this.material)
     quad.frustumCulled = false
     this.scene.add(quad)
   }
 
-  /** Throws when WebGPU init fails — caller decides how loud to be. */
-  static async create(canvas: HTMLCanvasElement, config: OrganismConfig, testPattern: boolean): Promise<OrganismRenderer> {
-    const renderer = new THREE.WebGPURenderer({ canvas, alpha: true, antialias: false })
-    await renderer.init()
-    // isWebGPUBackend exists on WebGPUBackend (three@0.185.1 source,
-    // WebGPUBackend.js:88) — the published .d.ts just types `backend` as the
-    // base class, hence the cast
-    if (!(renderer.backend as { isWebGPUBackend?: boolean }).isWebGPUBackend) {
-      // three silently falls back to WebGL2 — C14 forbids that path
-      renderer.dispose()
+  /** Init the raw GPU renderer first — the controller needs it for compute
+      passes before the render graph can be assembled. */
+  static async initGpu(canvas: HTMLCanvasElement): Promise<THREE.WebGPURenderer> {
+    const gpu = new THREE.WebGPURenderer({ canvas, alpha: true, antialias: false })
+    await gpu.init()
+    // isWebGPUBackend exists on WebGPUBackend (three@0.185.1 source) —
+    // the published .d.ts types `backend` as the base class, hence the cast
+    if (!(gpu.backend as { isWebGPUBackend?: boolean }).isWebGPUBackend) {
+      gpu.dispose()
       throw new Error('organism: WebGPU backend unavailable (WebGL fallback disabled by design)')
     }
-    return new OrganismRenderer(renderer, config, testPattern)
-  }
-
-  /* breathing disc — only used with ?organism=test to verify the pass */
-  private testPatternNode() {
-    const centered = uv().sub(0.5).mul(2)
-    const r = length(centered)
-    const pulse = time.mul(0.8).sin().mul(0.05).add(0.28)
-    return smoothstep(pulse, pulse.sub(0.02), r).mul(this.config.appearance.opacity)
+    return gpu
   }
 
   setSize(width: number, height: number, pixelRatio: number) {
     this.renderer.setPixelRatio(Math.min(pixelRatio, this.config.rendering.maxPixelRatio))
     this.renderer.setSize(width, height, false)
     this.aspect.value = width / Math.max(height, 1)
+    this.viewportHeightPx.value = Math.max(height, 1)
   }
 
   start(onFrame: (timeMs: number) => void) {
