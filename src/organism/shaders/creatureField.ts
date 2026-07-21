@@ -76,7 +76,7 @@ export function creatureDistance(
   const ph2 = time.mul(0.07).add(2.1)
   const wx = q.y.mul(6.3).add(ph1).sin().add(q.x.mul(9.1).add(ph2).sin().mul(0.6))
   const wy = q.x.mul(5.7).add(ph2).cos().add(q.y.mul(8.3).add(ph1).cos().mul(0.6))
-  const p = simPos.add(vec2(wx, wy).mul(R * 0.14))
+  const p = simPos.add(vec2(wx, wy).mul(R * 0.1))
 
   // torso: core + lobes, generous smoothness — one mass, irregular contour
   let d = sdCircle(p, core.xy, core.z)
@@ -92,7 +92,7 @@ export function creatureDistance(
       const p0 = part(layout.indexOf(a, j))
       const p1 = part(layout.indexOf(a, j + 1))
       const t = j / (layout.jointsPerAppendage - 1)
-      const k = j === 0 ? R * 0.9 : t < 0.55 ? R * 0.65 : R * 0.45
+      const k = j === 0 ? R * 0.7 : t < 0.55 ? R * 0.45 : R * 0.3
       const seg = sdTaperedSegment(p, p0.xy, p1.xy, p0.z.mul(p0.w), p1.z.mul(p1.w))
       d = sminN(d, seg, k)
     }
@@ -104,8 +104,8 @@ export function creatureDistance(
   for (let a = 0; a < walkers - 1; a++) {
     const a1 = part(layout.indexOf(a, 1))
     const b1 = part(layout.indexOf(a + 1, 1))
-    const web1 = sdTaperedSegment(p, a1.xy, b1.xy, float(R * 0.07), float(R * 0.07))
-    d = sminN(d, web1, R * 0.55)
+    const web1 = sdTaperedSegment(p, a1.xy, b1.xy, float(R * 0.05), float(R * 0.05))
+    d = sminN(d, web1, R * 0.4)
     const a2 = part(layout.indexOf(a, 2))
     const b2 = part(layout.indexOf(a + 1, 2))
     const web2 = sdTaperedSegment(p, a2.xy, b2.xy, float(R * 0.045), float(R * 0.045))

@@ -322,8 +322,8 @@ export class OrganismSimulation {
         // near the root and dies toward the planted foot (user 2026-07-21)
         const env = quietTip ? Math.pow(1 - t, 1.4) : 1
         const w =
-          (Math.sin(t * Math.PI * 1.7 + this.time * sp1 + d2.curlPhase) * 0.7 +
-            Math.sin(t * Math.PI * 2.9 - this.time * sp2 + d2.curlPhase * 2.3) * 0.3) *
+          (Math.sin(t * Math.PI * 1.15 + this.time * sp1 + d2.curlPhase) * 0.7 +
+            Math.sin(t * Math.PI * 2.1 - this.time * sp2 + d2.curlPhase * 2.3) * 0.3) *
           Math.sin(t * Math.PI) *
           ampMod *
           env
@@ -679,11 +679,11 @@ export class OrganismSimulation {
             this.stanceY = cY
             this.stanceInit = true
           }
-          const ck = 1 - Math.exp((-dt / 0.45) * Math.LN2)
+          const ck = 1 - Math.exp((-dt / 0.7) * Math.LN2)
           this.stanceX += (cX - this.stanceX) * ck
           this.stanceY += (cY - this.stanceY) * ck
           const surge = this.time < this.surgeUntil
-          const gain = surge ? 1.8 : 1.3
+          const gain = surge ? 1.5 : 1.2
           const pullX = this.stanceX + travelDirX * this.maxReach * 0.5
           const pullY = this.stanceY + travelDirY * this.maxReach * 0.5
           let mx = (pullX - p.posX[0]) * Math.min(1, dt * gain)
@@ -705,7 +705,7 @@ export class OrganismSimulation {
         let anyPlant = false
         for (const pl of this.plants) if (pl.active) anyPlant = true
         const speedNorm = Math.min(1, Math.hypot(this.coreVelX, this.coreVelY) / 0.08)
-        const dip = 0.045 * Math.exp(-(this.time - this.lastPlantTime) / 0.35)
+        const dip = 0.02 * Math.exp(-(this.time - this.lastPlantTime) / 0.35)
         const hover = this.maxReach * (0.3 + Math.sin(this.time * 0.11 * Math.PI * 2 + 0.7) * 0.06 - speedNorm * 0.08 - dip)
         const clampE = anyPlant ? 0.05 : 0.14
         const gainE = anyPlant ? 1.6 : 3.2
@@ -942,7 +942,7 @@ export class OrganismSimulation {
         const strain = this.sniffing || yearn ? 0.92 + 0.08 * Math.sin(this.time * 0.045 * Math.PI * 2 + a * 1.3) + poke : 0
         // peaks touch FULL extension (clamped by the solver), then relax —
         // able to fully stretch, never parked there (user 2026-07-21)
-        const ext = this.chainLen[a] * (this.sniffing || yearn ? Math.min(1, strain) : this.pointerActive ? 0.85 + 0.08 * Math.sin(this.time * 0.11 * Math.PI * 2 + a) : 0.55 + 0.28 * Math.sin(this.time * 0.07 * Math.PI * 2 + a * 1.9))
+        const ext = this.chainLen[a] * (this.sniffing || yearn ? Math.min(1, strain) : this.pointerActive ? 0.85 + 0.08 * Math.sin(this.time * 0.11 * Math.PI * 2 + a) : 0.72 + 0.2 * Math.sin(this.time * 0.07 * Math.PI * 2 + a * 1.9))
         const ddx = desX - rootX
         const ddy = desY - rootY
         const dl = Math.hypot(ddx, ddy) || 1
@@ -954,7 +954,7 @@ export class OrganismSimulation {
         const snakeCalm = this.sniffing || yearn ? 1 : calm
         const extFrac = Math.min(1, ext / this.chainLen[a])
         const tension = Math.max(0.12, 1.15 - extFrac) // taut at full strain
-        const snake = Math.sin(this.time * (0.16 + (a - LEGS) * 0.05) * Math.PI * 2 + d.curlPhase) * this.chainLen[a] * 0.24 * snakeCalm * tension
+        const snake = Math.sin(this.time * (0.16 + (a - LEGS) * 0.05) * Math.PI * 2 + d.curlPhase) * this.chainLen[a] * 0.1 * snakeCalm * tension
         this.solveLimb(a, rootX, rootY, this.seekX[a], this.seekY[a], snake)
       }
     }
