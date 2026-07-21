@@ -94,6 +94,12 @@ export class OrganismSimulation {
   private lastReleaseTime = -10
   private lastPlantTime = -10
   private surgeUntil = -10
+  private stanceX = 1.02
+  private stanceY = 0.42
+  private stanceInit = false
+  private lastJumpEnd = -10
+  private lastJumpFromX = 1e9
+  private lastJumpFromY = 1e9
   /* seekers: eased targets */
   private seekX: Float32Array
   private seekY: Float32Array
@@ -263,7 +269,7 @@ export class OrganismSimulation {
     const dx = tx - rootX
     const dy = ty - rootY
     const dist = Math.hypot(dx, dy)
-    const reach = this.chainLen[a] * 0.985
+    const reach = this.chainLen[a]
     let gx = tx
     let gy = ty
     if (dist > reach) {
@@ -549,7 +555,9 @@ export class OrganismSimulation {
               }
             }
           }
-          if (arcClear && landSane && goalDist > 0.2 && gap > this.maxReach * 1.1 && gap < 0.4) {
+          const cooled = this.time - this.lastJumpEnd > 3
+          const notReturn = Math.hypot(land.x - this.lastJumpFromX, land.y - this.lastJumpFromY) > 0.15
+          if (cooled && notReturn && arcClear && landSane && goalDist > 0.2 && gap > this.maxReach * 1.1 && gap < 0.4) {
             this.jumpSX = p.posX[0]
             this.jumpSY = p.posY[0]
             this.jumpEX = land.x
@@ -592,7 +600,12 @@ export class OrganismSimulation {
       p.posY[0] = this.jumpSY + (this.jumpEY - this.jumpSY) * ease + (upy / ul) * arc
       p.prevX[0] = p.posX[0]
       p.prevY[0] = p.posY[0]
-      if (t01 >= 1) this.setState('pursue')
+      if (t01 >= 1) {
+        this.lastJumpEnd = this.time
+        this.lastJumpFromX = this.jumpSX
+        this.lastJumpFromY = this.jumpSY
+        this.setState('pursue')
+      }
     } else {
       if (S === 'pursue' && tlen > 0.015) {
         let planted = 0
@@ -607,10 +620,22 @@ export class OrganismSimulation {
         }
         const maxStep = cfg.behavior.maximumCoreSpeed * this.viewportAspect * dt
         if (planted > 0) {
+          // smoothed stance centroid: lifting a foot must never teleport
+          // the pull target half a stance-width (the flip-flop source)
+          const cX = sumX / planted
+          const cY = sumY / planted
+          if (!this.stanceInit) {
+            this.stanceX = cX
+            this.stanceY = cY
+            this.stanceInit = true
+          }
+          const ck = 1 - Math.exp((-dt / 0.45) * Math.LN2)
+          this.stanceX += (cX - this.stanceX) * ck
+          this.stanceY += (cY - this.stanceY) * ck
           const surge = this.time < this.surgeUntil
-          const gain = surge ? 3.2 : 1.6
-          const pullX = sumX / planted + travelDirX * this.maxReach * 0.5
-          const pullY = sumY / planted + travelDirY * this.maxReach * 0.5
+          const gain = surge ? 2.2 : 1.6
+          const pullX = this.stanceX + travelDirX * this.maxReach * 0.5
+          const pullY = this.stanceY + travelDirY * this.maxReach * 0.5
           let mx = (pullX - p.posX[0]) * Math.min(1, dt * gain)
           let my = (pullY - p.posY[0]) * Math.min(1, dt * gain)
           const mlen = Math.hypot(mx, my)
@@ -630,7 +655,7 @@ export class OrganismSimulation {
         let anyPlant = false
         for (const pl of this.plants) if (pl.active) anyPlant = true
         const speedNorm = Math.min(1, Math.hypot(this.coreVelX, this.coreVelY) / 0.08)
-        const dip = 0.08 * Math.exp(-(this.time - this.lastPlantTime) / 0.35)
+        const dip = 0.045 * Math.exp(-(this.time - this.lastPlantTime) / 0.35)
         const hover = this.maxReach * (0.3 + Math.sin(this.time * 0.11 * Math.PI * 2 + 0.7) * 0.06 - speedNorm * 0.08 - dip)
         const clampE = anyPlant ? 0.05 : 0.14
         const gainE = anyPlant ? 1.6 : 3.2
@@ -863,8 +888,11 @@ export class OrganismSimulation {
         }
         // extension: breathes while idle; STRAINS with poke pulses when
         // yearning/sniffing — visible wanting, not a passive stretch
-        const poke = (this.sniffing || yearn) ? 0.06 * Math.sin(this.time * 0.55 * Math.PI * 2 + a * 2.1) : 0
-        const ext = this.chainLen[a] * ((this.sniffing || yearn) ? 0.92 + poke : this.pointerActive ? 0.85 + 0.08 * Math.sin(this.time * 0.11 * Math.PI * 2 + a) : 0.55 + 0.28 * Math.sin(this.time * 0.07 * Math.PI * 2 + a * 1.9))
+        const poke = this.sniffing || yearn ? 0.07 * Math.sin(this.time * 0.55 * Math.PI * 2 + a * 2.1) : 0
+        const strain = this.sniffing || yearn ? 0.92 + 0.08 * Math.sin(this.time * 0.045 * Math.PI * 2 + a * 1.3) + poke : 0
+        // peaks touch FULL extension (clamped by the solver), then relax —
+        // able to fully stretch, never parked there (user 2026-07-21)
+        const ext = this.chainLen[a] * (this.sniffing || yearn ? Math.min(1, strain) : this.pointerActive ? 0.85 + 0.08 * Math.sin(this.time * 0.11 * Math.PI * 2 + a) : 0.55 + 0.28 * Math.sin(this.time * 0.07 * Math.PI * 2 + a * 1.9))
         const ddx = desX - rootX
         const ddy = desY - rootY
         const dl = Math.hypot(ddx, ddy) || 1
