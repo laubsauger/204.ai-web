@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { useHead } from '../hooks/useHead'
 
 export function NotFound() {
-  useHead('404 — 204 · NO-CONTENT', 'Page not found. Which is on-brand, but not on purpose this time.')
+  useHead('404', 'Page not found. Which is on-brand, but not on purpose this time.')
 
   return (
     <div style={{ padding: '96px 28px', maxWidth: 720 }}>

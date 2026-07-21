@@ -33,6 +33,11 @@ const dist = join(root, 'dist')
 // e.g. https://laubsauger.github.io/204.ai-web — no trailing slash
 const SITE_URL = (process.env.SITE_URL ?? '').replace(/\/$/, '')
 
+/* title rule mirrors src/hooks/useHead.ts — bare page names in, brand out */
+const BRAND = '204 · NO-CONTENT'
+const HOME_TITLE = `${BRAND} — Creative technology studio`
+const t = (page) => (page ? `${page} — ${BRAND}` : HOME_TITLE)
+
 const DEFAULT_IMAGE =
   'https://cdn.prod.website-files.com/64ba5b3b418a540ade9f6e31/65b7a18446d60bb65c1641e7_204white.png'
 
@@ -40,44 +45,44 @@ const DEFAULT_IMAGE =
 const routes = [
   {
     path: '/',
-    title: '204 · NO-CONTENT — Creative technology studio',
+    title: t(''),
     desc: '204 is a creative technology studio at the intersection of AI, motion, identity and live environments. Based at RnA Studio, Lisbon.',
   },
   {
     path: '/work',
-    title: 'Work — 204 · NO-CONTENT',
+    title: t('Work'),
     desc: 'Selected work: interactive installations, immersive mapping, branded and artistic AI film by 204.',
   },
   {
     path: '/services',
-    title: 'Services — 204 · NO-CONTENT',
+    title: t('Services'),
     desc: 'Two pillars: AI-powered content creation (branded work, mapping, film, archival) and interactive formats (Magic Mirror, AI Photo Booth, Live Visuals, Augmented Art).',
   },
   {
     path: '/about',
-    title: 'About — 204 · NO-CONTENT',
+    title: t('About'),
     desc: '204 is a creative technology studio led by six makers in Lisbon, working at the intersection of AI, motion, identity and live environments.',
   },
   {
     path: '/contact',
-    title: 'Contact — 204 · NO-CONTENT',
+    title: t('Contact'),
     desc: 'Send a brief, not a form. Three lines: who you are, what you’re making, when you need it by.',
   },
   ...WORKS.map((w) => ({
     path: `/work/${w.slug}`,
-    title: `${w.title} — 204 · NO-CONTENT`,
+    title: t(w.title),
     desc: w.note,
     image: w.media?.still,
   })),
   ...SERVICES_ALL.map((s) => ({
     path: `/services/${s.slug}`,
-    title: `${s.label} — 204 · NO-CONTENT`,
+    title: t(s.label),
     desc: s.body,
     image: s.still,
   })),
   ...PEOPLE.map((p) => ({
     path: `/makers/${p.slug}`,
-    title: `${p.name} — 204 · NO-CONTENT`,
+    title: t(p.name),
     desc: `${p.name}, ${p.role} at 204 — creative technology studio, Lisbon.`,
     image: p.photo,
   })),

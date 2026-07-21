@@ -7,7 +7,7 @@ import styles from './About.module.css'
 
 export function About() {
   useHead(
-    'About — 204 · NO-CONTENT',
+    'About',
     '204 is a creative technology studio led by five makers in Lisbon, working at the intersection of AI, motion, identity and live environments.',
   )
 

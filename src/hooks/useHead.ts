@@ -13,10 +13,16 @@ function setMeta(attr: 'name' | 'property', key: string, content: string) {
   el.content = content
 }
 
+const BRAND = '204 · NO-CONTENT'
+const HOME_TITLE = `${BRAND} — Creative technology studio`
+
 // SPEC V10 / I.seo: every route sets unique title + description; og/twitter
 // tags follow so shares carry the right card. (Static per-route HTML for
 // non-JS scrapers is generated at build time by scripts/generate-meta.mjs.)
-export function useHead(title: string, description: string, image?: string) {
+// Pass the bare page name — the brand suffix is appended HERE, in one place
+// (empty string = home, which leads with the brand instead).
+export function useHead(pageTitle: string, description: string, image?: string) {
+  const title = pageTitle ? `${pageTitle} — ${BRAND}` : HOME_TITLE
   useEffect(() => {
     document.title = title
     setMeta('name', 'description', description)

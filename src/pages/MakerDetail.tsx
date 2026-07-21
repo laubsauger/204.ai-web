@@ -11,7 +11,7 @@ export function MakerDetail() {
   const p = PEOPLE[idx]
 
   useHead(
-    p ? `${p.name} — 204 · NO-CONTENT` : '404 — 204 · NO-CONTENT',
+    p ? `${p.name}` : '404',
     p ? `${p.name}, ${p.role} at 204 — creative technology studio, Lisbon.` : 'Maker not found.',
     p?.photo,
   )

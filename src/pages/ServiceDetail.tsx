@@ -12,7 +12,7 @@ export function ServiceDetail() {
   const s = SERVICES_ALL[idx]
 
   useHead(
-    s ? `${s.label} — 204 · NO-CONTENT` : '404 — 204 · NO-CONTENT',
+    s ? `${s.label}` : '404',
     s ? s.body : 'Service not found.',
     s?.still,
   )

@@ -13,7 +13,7 @@ const INFO: Array<[string, string, string?]> = [
 
 export function Contact() {
   useHead(
-    'Contact — 204 · NO-CONTENT',
+    'Contact',
     'Send a brief, not a form. Three lines: who you are, what you’re making, when you need it by.',
   )
   const [brief, setBrief] = useState({ name: '', org: '', budget: '', scope: '' })

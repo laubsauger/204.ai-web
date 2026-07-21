@@ -7,7 +7,7 @@ import styles from './Services.module.css'
 
 export function Services() {
   useHead(
-    'Services — 204 · NO-CONTENT',
+    'Services',
     'Two pillars: AI-powered content creation (branded work, mapping, film, archival) and interactive formats (Magic Mirror, AI Photo Booth, Live Visuals, Augmented Art).',
   )
 

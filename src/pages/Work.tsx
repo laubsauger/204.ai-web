@@ -10,7 +10,7 @@ import styles from './Work.module.css'
 
 export function Work() {
   useHead(
-    'Work — 204 · NO-CONTENT',
+    'Work',
     'Selected work: interactive installations, immersive mapping, branded and artistic AI film by 204.',
   )
   const [cat, setCat] = useState<CategoryFilter>('all')

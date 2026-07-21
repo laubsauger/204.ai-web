@@ -13,7 +13,7 @@ function fmt(s: number) {
 
 export function Home() {
   useHead(
-    '204 · NO-CONTENT — Creative technology studio',
+    '',
     '204 is a creative technology studio at the intersection of AI, motion, identity and live environments. Based at RnA Studio, Lisbon.',
   )
   const [activeFrame, setActiveFrame] = useState(0)
