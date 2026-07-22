@@ -24,8 +24,13 @@ function spawnPellet(): Pellet {
   const m = 50
   let x = 0
   let y = 0
+  // ~30% of food spawns in the LEFT room behind the squeeze — a fat slime
+  // can't reach it, so growth trades reach for access (user 2026-07-22)
+  const leftRoom = Math.random() < 0.3
+  const maxX = leftRoom ? window.innerWidth * 0.2 : window.innerWidth - m
+  const minX = leftRoom ? m : window.innerWidth * 0.28
   for (let tries = 0; tries < 60; tries++) {
-    x = m + Math.random() * (window.innerWidth - m * 2)
+    x = minX + Math.random() * (maxX - minX)
     y = m + Math.random() * (window.innerHeight - m * 2)
     const clear = walls.every((r) => x < r.left - 30 || x > r.right + 30 || y < r.top - 30 || y > r.bottom + 30)
     if (clear) break
@@ -77,6 +82,16 @@ function startGame(controller: OrganismController) {
     }
   }
   window.setInterval(check, 120)
+
+  // slow starvation: size decays toward 1 in 2% steps — stay fed to stay
+  // big; slimming down re-opens the squeeze
+  window.setInterval(() => {
+    if (scale > 1.001) {
+      scale = Math.max(1, scale * 0.98)
+      controller.setCreatureScale(scale)
+      sizeEl.textContent = scale.toFixed(2)
+    }
+  }, 4000)
 }
 
 const container = document.getElementById('mount')
