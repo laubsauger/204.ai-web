@@ -218,9 +218,12 @@ export function buildOutputNodes(opts: {
     // heat — a stretched seeker touching must not light distant feet
     const want = float(0.14).sub(tip.xy.sub(opts.glow.xy).length()).div(0.095).clamp(0, 1).pow(2.2).mul(opts.glow.w)
     const gd = simPos.sub(tip.xy).length()
-    glowF = max(glowF, float(1).sub(smoothstep(0, opts.glow.z, gd)).mul(want))
-    haze = max(haze, float(1).sub(smoothstep(0, opts.glow.z.mul(1.6), gd)).mul(want))
-    hot = max(hot, float(1).sub(smoothstep(0, opts.glow.z.mul(0.35), gd)).mul(want))
+    // halo radius scales WITH intensity (user 2026-07-22): a faint want is
+    // a small ember, only a full touch carries the full-size glow
+    const rr = opts.glow.z.mul(want.mul(0.65).add(0.35))
+    glowF = max(glowF, float(1).sub(smoothstep(0, rr, gd)).mul(want))
+    haze = max(haze, float(1).sub(smoothstep(0, rr.mul(1.6), gd)).mul(want))
+    hot = max(hot, float(1).sub(smoothstep(0, rr.mul(0.35), gd)).mul(want))
   }
   glowF = glowF.clamp(0, 0.85)
   const accentW = glowF.add(haze.mul(float(1).sub(coverage))).clamp(0, 0.9)
