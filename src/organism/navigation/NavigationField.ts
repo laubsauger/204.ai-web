@@ -60,26 +60,55 @@ export class NavigationField {
     return { x: ((c + 0.5) / this.cols) * this.aspect, y: (r + 0.5) / this.rows }
   }
 
-  /** Nearest unblocked cell via BFS ring (goal may sit inside an obstacle). */
-  private nearestOpen(start: number): number {
+  /** Nearest unblocked cell via BFS ring (goal may sit inside an obstacle).
+   * `towards` breaks ties toward the seeker's side: a cursor parked mid-
+   * obstacle must resolve to a STABLE exit cell, not whichever side the BFS
+   * happens to pop first (intent ping-pong paralysis, user 2026-07-22). */
+  private nearestOpen(start: number, towards = -1): number {
     if (!this.blocked[start]) return start
-    const q = [start]
+    let q = [start]
     const seen = new Set<number>([start])
+    const tc = towards >= 0 ? towards % this.cols : 0
+    const tr = towards >= 0 ? Math.floor(towards / this.cols) : 0
     while (q.length) {
-      const i = q.shift()!
-      if (!this.blocked[i]) return i
-      const c = i % this.cols
-      const r = Math.floor(i / this.cols)
-      for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
-        const nc = c + dc
-        const nr = r + dr
-        if (nc < 0 || nc >= this.cols || nr < 0 || nr >= this.rows) continue
-        const ni = nr * this.cols + nc
-        if (!seen.has(ni)) {
-          seen.add(ni)
-          q.push(ni)
+      // full BFS depth level at a time: collect ALL open cells of this ring,
+      // then pick the one nearest `towards`
+      const opens: number[] = []
+      const next: number[] = []
+      for (const i of q) {
+        if (!this.blocked[i]) {
+          opens.push(i)
+          continue
+        }
+        const c = i % this.cols
+        const r = Math.floor(i / this.cols)
+        for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+          const nc = c + dc
+          const nr = r + dr
+          if (nc < 0 || nc >= this.cols || nr < 0 || nr >= this.rows) continue
+          const ni = nr * this.cols + nc
+          if (!seen.has(ni)) {
+            seen.add(ni)
+            next.push(ni)
+          }
         }
       }
+      if (opens.length) {
+        if (towards < 0 || opens.length === 1) return opens[0]
+        let best = opens[0]
+        let bd = Infinity
+        for (const i of opens) {
+          const dc = (i % this.cols) - tc
+          const dr = Math.floor(i / this.cols) - tr
+          const dd = dc * dc + dr * dr
+          if (dd < bd) {
+            bd = dd
+            best = i
+          }
+        }
+        return best
+      }
+      q = next
     }
     return start
   }
@@ -112,7 +141,7 @@ export class NavigationField {
     }
     const start = this.nearestOpen(this.cellOf(sx, sy))
     const goalCellRaw = this.cellOf(gx, gy)
-    const goal = this.nearestOpen(goalCellRaw)
+    const goal = this.nearestOpen(goalCellRaw, start)
     const goalUnreachable = goal !== goalCellRaw
 
     const { cols, rows } = this

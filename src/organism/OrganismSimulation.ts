@@ -72,6 +72,8 @@ export class OrganismSimulation {
   routeIdx = 0
   private routeGoalX = 0
   private routeGoalY = 0
+  private routePosX = 0
+  private routePosY = 0
   private lastRouteTime = -10
   private sniffing = false
   private lastPointerDist = Infinity
@@ -530,9 +532,18 @@ export class OrganismSimulation {
         (starved && this.time - this.lastRouteTime > 2)
       if (stale) {
         if (starved) this.lastProgressTime = this.time
-        this.route = this.nav.route(p.posX[0], p.posY[0], ix, iy, this.hasLOS, starved ? undefined : this.route?.points)
+        // starved reroutes drop memory ONLY when the body actually traveled
+        // since the last route (stale wrap-around lock). A starved body that
+        // went NOWHERE must keep its memory — memoryless recomputes flipped
+        // homotopy every 2s and the averaged travel dir froze the creature
+        // (cursor-on-obstacle paralysis, user 2026-07-22)
+        const traveled = Math.hypot(p.posX[0] - this.routePosX, p.posY[0] - this.routePosY) > 0.05
+        const keepMemory = !starved || !traveled
+        this.route = this.nav.route(p.posX[0], p.posY[0], ix, iy, this.hasLOS, keepMemory ? this.route?.points : undefined)
         this.routeGoalX = ix
         this.routeGoalY = iy
+        this.routePosX = p.posX[0]
+        this.routePosY = p.posY[0]
         this.lastRouteTime = this.time
         this.routeIdx = 0
       }
@@ -859,8 +870,16 @@ export class OrganismSimulation {
           p.posX[0] += mx
           p.posY[0] += my
         } else {
-          p.posX[0] += travelDirX * maxStep * 0.35
-          p.posY[0] += travelDirY * maxStep * 0.35
+          // no plantable footing (glyph pockets, dead pads): slither at full
+          // walk speed STRAIGHT toward the local destination — the surface
+          // frame is meaningless in a pocket (normal spins, tangent noise)
+          const edx = this.intentX - p.posX[0]
+          const edy = this.intentY - p.posY[0]
+          const el = Math.hypot(edx, edy)
+          if (el > 1e-4) {
+            p.posX[0] += (edx / el) * maxStep
+            p.posY[0] += (edy / el) * maxStep
+          }
         }
       }
       if (S !== 'pursue') {
