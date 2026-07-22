@@ -7,7 +7,6 @@ import * as THREE from 'three/webgpu'
 import { DomObstacleCollector, type CollectedObstacle } from './obstacle/DomObstacleCollector'
 import { ObstacleMask } from './obstacle/ObstacleMask'
 import { ObstacleDistanceField } from './obstacle/ObstacleDistanceField'
-import { TrailLayer } from './TrailLayer'
 import { ParticleBuffer, mulberry32 } from './simulation/ParticleBuffer'
 import { OrganismSimulation } from './OrganismSimulation'
 import { NavigationField } from './navigation/NavigationField'
@@ -25,7 +24,6 @@ export class OrganismController {
   readonly particles: ParticleBuffer
   readonly mask: ObstacleMask
   readonly field: ObstacleDistanceField
-  readonly trail: TrailLayer
   readonly lobeData: THREE.Vector4[]
   readonly creaseData: THREE.Vector4[]
   private collector: DomObstacleCollector
@@ -54,7 +52,6 @@ export class OrganismController {
     }))
 
     this.field = new ObstacleDistanceField(renderer, this.mask.texture, this.mask.width, this.mask.height)
-    this.trail = new TrailLayer(256)
     this.simulation = new OrganismSimulation(this.particles, config)
     this.nav = new NavigationField(config.navigation.gridWidth, config.navigation.gridHeight)
     this.simulation.nav = this.nav
@@ -148,15 +145,6 @@ export class OrganismController {
     const frameDt = this.lastFrameMs === null ? 1 / 60 : Math.min(0.1, (timeMs - this.lastFrameMs) / 1000)
     this.lastFrameMs = timeMs
     this.simulation.writeUniforms(this.timestep.alpha, frameDt)
-    {
-      const p = this.particles
-      const pts: Array<[number, number, number]> = [[p.renderX[0], p.renderY[0], p.radius[0] * 0.5]]
-      for (let a = 0; a < p.appendageCount; a++) {
-        const t = p.indexOf(a, p.jointsPerAppendage - 1)
-        pts.push([p.renderX[t], p.renderY[t], p.radius[t] * 1.6])
-      }
-      this.trail.update(frameDt, this.viewport, p.renderX[0], p.renderY[0], pts)
-    }
     this.deriveTorso()
     this.deriveCreases()
   }
@@ -205,7 +193,6 @@ export class OrganismController {
   dispose() {
     this.collector.dispose()
     this.mask.dispose()
-    this.trail.dispose()
     this.field.dispose()
   }
 }
