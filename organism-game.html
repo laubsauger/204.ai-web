@@ -6,50 +6,113 @@
     <title>slime run · 204 lab</title>
     <style>
       * { margin: 0; box-sizing: border-box; }
-      html, body { height: 100%; }
-      body { background: #0a0a0a; color: #ececec; font: 12px/1.4 'JetBrains Mono', monospace; height: 100vh; overflow: hidden; }
+      body {
+        background: #0a0a0a; color: #ececec; font: 12px/1.4 'JetBrains Mono', monospace;
+        height: 500vh; overflow-x: hidden;
+      }
       .organism-background { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
       .wall {
-        position: absolute; z-index: 1; border: 1px solid rgba(236,236,236,0.28);
-        background: rgba(20,20,20,0.92);
+        position: absolute; z-index: 1; border: 1px solid rgba(236,236,236,0.22);
+        background: rgba(18,18,18,0.94);
       }
-      /* terrain: two rooms + narrow squeeze corridor + high ledge */
-      #w-top    { left: 22%; top: 0;     width: 3.5%; height: 34vh; }
-      #w-bottom { left: 22%; top: 46vh;  width: 3.5%; height: 54vh; }  /* gap 34..46vh = squeeze: passable small, closed fat */
-      #w-mid    { left: 46%; top: 26vh;  width: 26%;  height: 9vh; }
-      #w-block  { left: 60%; top: 62vh;  width: 15%;  height: 16vh; }
-      #w-ledge  { left: 84%; top: 40vh;  width: 16%;  height: 7vh; }
+      .zone-label {
+        position: absolute; z-index: 1; color: rgba(236,236,236,0.28); user-select: none;
+        font-family: 'Archivo Black', Impact, sans-serif; font-size: 4.5vh;
+        letter-spacing: -0.02px; line-height: 0.88; text-transform: uppercase;
+      }
+
+      /* ── zone 1 · nursery (0–100vh): tight nooks, tiny food ── */
+      #z1a { left: 0;    top: 22vh; width: 34%;  height: 8vh; }
+      #z1b { left: 46%;  top: 22vh; width: 54%;  height: 8vh; }   /* 12% gap: newborn squeeze */
+      #z1c { left: 18%;  top: 52vh; width: 64%;  height: 7vh; }
+      #z1d { left: 0;    top: 78vh; width: 42%;  height: 8vh; }
+      #z1e { left: 55%;  top: 78vh; width: 45%;  height: 8vh; }   /* 13% gap */
+
+      /* ── zone 2 · warrens (100–200vh): corridors, medium food ── */
+      #z2a { left: 24%;  top: 108vh; width: 8%;  height: 60vh; }
+      #z2b { left: 55%;  top: 122vh; width: 8%;  height: 62vh; }
+      #z2c { left: 80%;  top: 108vh; width: 8%;  height: 48vh; }
+      #z2d { left: 0;    top: 176vh; width: 40%; height: 7vh; }
+
+      /* ── zone 3 · cavern (200–300vh): floating islands, stretch gaps ── */
+      #z3a { left: 8%;   top: 216vh; width: 20%; height: 10vh; }
+      #z3b { left: 42%;  top: 232vh; width: 18%; height: 9vh; }
+      #z3c { left: 72%;  top: 214vh; width: 20%; height: 10vh; }
+      #z3d { left: 26%;  top: 262vh; width: 22%; height: 10vh; }
+      #z3e { left: 62%;  top: 274vh; width: 24%; height: 9vh; }
+
+      /* ── zone 4 · rift (300–400vh): wide ledges, real jump gaps ── */
+      #z4a { left: 0;    top: 318vh; width: 30%; height: 9vh; }
+      #z4b { left: 58%;  top: 318vh; width: 42%; height: 9vh; }   /* 28% rift */
+      #z4c { left: 20%;  top: 356vh; width: 26%; height: 9vh; }
+      #z4d { left: 74%;  top: 362vh; width: 26%; height: 9vh; }
+
+      /* ── zone 5 · den (400–500vh): the deep, giant food ── */
+      #z5a { left: 12%;  top: 424vh; width: 76%; height: 10vh; }
+      #z5b { left: 0;    top: 468vh; width: 100%; height: 12vh; }
+
+      #l1 { left: 6%;  top: 8vh; }
+      #l2 { left: 6%;  top: 108vh; }
+      #l3 { left: 6%;  top: 204vh; }
+      #l4 { left: 6%;  top: 304vh; }
+      #l5 { left: 6%;  top: 408vh; }
+
       .pellet {
-        position: absolute; z-index: 1; width: 14px; height: 14px; border-radius: 50%;
+        position: absolute; z-index: 1; border-radius: 50%;
         background: radial-gradient(circle at 38% 35%, #ffb08e 0%, #c9442b 55%, #7e2413 100%);
-        box-shadow: 0 0 12px 2px rgba(201, 68, 43, 0.55);
+        box-shadow: 0 0 10px 2px rgba(201, 68, 43, 0.5);
         transform: translate(-50%, -50%);
         transition: opacity 0.25s, scale 0.25s;
       }
       .pellet.eaten { opacity: 0; scale: 2.2; }
       #hud {
-        position: fixed; left: 12px; top: 10px; z-index: 2; background: #0a0a0a;
-        padding: 4px 8px; color: rgba(236,236,236,0.72); user-select: none;
+        position: fixed; left: 12px; top: 10px; z-index: 2; background: rgba(10,10,10,0.85);
+        padding: 5px 9px; color: rgba(236,236,236,0.75); user-select: none;
       }
       #hud b { color: #c9442b; }
-      #title {
-        position: fixed; right: 16px; bottom: 10px; z-index: 1; user-select: none;
-        font-family: 'Archivo Black', Impact, sans-serif; font-size: 5vh;
-        letter-spacing: -0.02px; line-height: 0.88; text-transform: uppercase;
-        color: rgba(236,236,236,0.92);
+      #stage-flash {
+        position: fixed; left: 50%; top: 38%; transform: translateX(-50%); z-index: 2;
+        font-family: 'Archivo Black', Impact, sans-serif; font-size: 6vh; text-transform: uppercase;
+        letter-spacing: -0.02px; color: #ececec; opacity: 0; transition: opacity 0.6s;
+        pointer-events: none; text-align: center;
       }
-      #msg { position: fixed; left: 12px; top: 34px; z-index: 2; color: rgba(236,236,236,0.45); }
+      #stage-flash.show { opacity: 0.92; }
+      #stage-flash small { display: block; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #c9442b; margin-top: 8px; text-transform: none; }
+      #msg { position: fixed; left: 12px; top: 40px; z-index: 2; color: rgba(236,236,236,0.4); }
     </style>
   </head>
   <body>
-    <div id="hud">slime run — food <b id="score">0</b> · size <b id="size">1.00</b>×</div>
-    <div id="msg">steer with the cursor. eat. grow. big slime jumps far — but stops fitting through the squeeze.</div>
-    <div class="wall" id="w-top" data-organism-obstacle data-organism-padding="6"></div>
-    <div class="wall" id="w-bottom" data-organism-obstacle data-organism-padding="6"></div>
-    <div class="wall" id="w-mid" data-organism-obstacle data-organism-padding="6"></div>
-    <div class="wall" id="w-block" data-organism-obstacle data-organism-padding="6"></div>
-    <div class="wall" id="w-ledge" data-organism-obstacle data-organism-padding="6"></div>
-    <div id="title" aria-hidden="true">slime<br />run</div>
+    <div id="hud">slime run — <b id="stage">hatchling</b> · food <b id="score">0</b> · size <b id="size">0.70</b>×</div>
+    <div id="msg">steer with the cursor. eat to evolve. the deep wants you bigger — the nooks want you small.</div>
+    <div id="stage-flash"></div>
+
+    <div class="zone-label" id="l1" aria-hidden="true">nursery</div>
+    <div class="zone-label" id="l2" aria-hidden="true">warrens</div>
+    <div class="zone-label" id="l3" aria-hidden="true">cavern</div>
+    <div class="zone-label" id="l4" aria-hidden="true">rift</div>
+    <div class="zone-label" id="l5" aria-hidden="true">the den</div>
+
+    <div class="wall" id="z1a" data-organism-obstacle data-organism-padding="5"></div>
+    <div class="wall" id="z1b" data-organism-obstacle data-organism-padding="5"></div>
+    <div class="wall" id="z1c" data-organism-obstacle data-organism-padding="5"></div>
+    <div class="wall" id="z1d" data-organism-obstacle data-organism-padding="5"></div>
+    <div class="wall" id="z1e" data-organism-obstacle data-organism-padding="5"></div>
+    <div class="wall" id="z2a" data-organism-obstacle data-organism-padding="5"></div>
+    <div class="wall" id="z2b" data-organism-obstacle data-organism-padding="5"></div>
+    <div class="wall" id="z2c" data-organism-obstacle data-organism-padding="5"></div>
+    <div class="wall" id="z2d" data-organism-obstacle data-organism-padding="5"></div>
+    <div class="wall" id="z3a" data-organism-obstacle data-organism-padding="5"></div>
+    <div class="wall" id="z3b" data-organism-obstacle data-organism-padding="5"></div>
+    <div class="wall" id="z3c" data-organism-obstacle data-organism-padding="5"></div>
+    <div class="wall" id="z3d" data-organism-obstacle data-organism-padding="5"></div>
+    <div class="wall" id="z3e" data-organism-obstacle data-organism-padding="5"></div>
+    <div class="wall" id="z4a" data-organism-obstacle data-organism-padding="5"></div>
+    <div class="wall" id="z4b" data-organism-obstacle data-organism-padding="5"></div>
+    <div class="wall" id="z4c" data-organism-obstacle data-organism-padding="5"></div>
+    <div class="wall" id="z4d" data-organism-obstacle data-organism-padding="5"></div>
+    <div class="wall" id="z5a" data-organism-obstacle data-organism-padding="5"></div>
+    <div class="wall" id="z5b" data-organism-obstacle data-organism-padding="5"></div>
+
     <div class="organism-background" id="mount" aria-hidden="true"></div>
     <script type="module" src="/src/organism-game.ts"></script>
   </body>

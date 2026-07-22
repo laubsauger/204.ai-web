@@ -33,7 +33,7 @@ const studioJson = content('studio.json')
 // home LCP = the first hero chapter's poster
 const heroWork = WORKS.find((w) => w.slug === studioJson.heroChapters[0])
 const dist = join(root, 'dist')
-// e.g. https://laubsauger.github.io/204.ai-web — no trailing slash
+// e.g. https://204-ai.github.io/204.ai-web — no trailing slash
 const SITE_URL = (process.env.SITE_URL ?? '').replace(/\/$/, '')
 // deploy base path, mirrors vite.config.ts (SPEC V16 dual deploy)
 const BASE = process.env.VITE_BASE ?? '/'

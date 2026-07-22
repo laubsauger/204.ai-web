@@ -237,6 +237,16 @@ export class OrganismSimulation {
     }
     this.anchorY += dySim
     this.intentY += dySim
+    // jump arc + smoothed stance + goal memories live in page space too —
+    // un-shifted, a scroll mid-jump froze the arc in stale coords and the
+    // creature hung midair (user 2026-07-22)
+    this.jumpSY += dySim
+    this.jumpEY += dySim
+    this.stanceY += dySim
+    if (this.failedGoalY < 1e8) this.failedGoalY += dySim
+    if (this.decisionGoalY < 1e8) this.decisionGoalY += dySim
+    this.routeGoalY += dySim
+    if (this.route) for (const pt of this.route.points) pt.y += dySim
     for (const pl of this.plants) if (pl.active) pl.y += dySim
     for (const sw of this.swings) {
       if (sw.active) {
@@ -496,7 +506,9 @@ export class OrganismSimulation {
 
     /* surface frame (smoothed — no face-flip thrash) */
     const sd = this.surfaceDist(p.posX[0], p.posY[0])
-    const inRange = sd < this.maxReach * 1.05
+    // attach gate floored: a shrunken creature (game scale <1) otherwise
+    // equilibrates in open space beyond its tiny reach and never plants
+    const inRange = sd < Math.max(this.maxReach * 1.05, 0.1)
     const nRaw = this.surfaceNormalInto(p.posX[0], p.posY[0], this.normal)
     const nk = Math.min(1, dt * (this.state === 'rest' ? 0.5 : 2.5)) // frozen frame at rest — no hover-direction sway
     this.smNX += (nRaw.x - this.smNX) * nk
@@ -534,6 +546,11 @@ export class OrganismSimulation {
       }
     }
 
+    /* body-local distance thresholds scale with creature size (game mode
+       shrinks the body far below the scale-1 tuning; clamped so the site
+       creature at scale 1 is bit-identical) */
+    const RS = Math.max(0.55, Math.min(1.6, this.creatureScale))
+
     /* shell the goal (user 2026-07-22): a cursor floating in open space is
        untouchable for a wall-walker — routing at it makes decide() project
        mid-air waypoints back to the CURRENT surface (ceiling wiggle). Walk
@@ -559,7 +576,7 @@ export class OrganismSimulation {
         this.lastProgressTime = this.time
       }
 
-      starved = dNow > 0.25 && this.time - this.lastProgressTime > 2
+      starved = dNow > 0.25 * RS && this.time - this.lastProgressTime > 2
       // capture stall BEFORE the starved reroute resets the progress clock —
       // jumps are a last resort, allowed only once walking stopped helping
       this.walkStalled = this.time - this.lastProgressTime > 3
@@ -594,7 +611,7 @@ export class OrganismSimulation {
         this.routeIdx = 0
       }
       const pts = this.route!.points
-      while (this.routeIdx < pts.length && Math.hypot(pts[this.routeIdx].x - p.posX[0], pts[this.routeIdx].y - p.posY[0]) < 0.085) this.routeIdx++ // tighter: less corner shortcutting
+      while (this.routeIdx < pts.length && Math.hypot(pts[this.routeIdx].x - p.posX[0], pts[this.routeIdx].y - p.posY[0]) < 0.085 * RS) this.routeIdx++ // tighter: less corner shortcutting
       if (this.routeIdx < pts.length) {
         finalGoalDist = Math.hypot(ix - p.posX[0], iy - p.posY[0])
         ix = pts[this.routeIdx].x
@@ -602,7 +619,7 @@ export class OrganismSimulation {
       }
       if (this.route!.goalUnreachable && this.pointerActive) {
         const end = pts.length ? pts[pts.length - 1] : { x: p.posX[0], y: p.posY[0] }
-        if (Math.hypot(end.x - p.posX[0], end.y - p.posY[0]) < 0.16) this.sniffing = true
+        if (Math.hypot(end.x - p.posX[0], end.y - p.posY[0]) < 0.16 * RS) this.sniffing = true
       }
     }
 
@@ -622,11 +639,11 @@ export class OrganismSimulation {
         for (let k = this.routeIdx; k < this.route.points.length; k++) {
           const wp = this.route.points[k]
           const seg = Math.hypot(wp.x - cx, wp.y - cy)
-          if (acc + seg >= 0.28 && seg > 1e-6) {
+          if (acc + seg >= 0.28 * RS && seg > 1e-6) {
             // interpolate WITHIN the segment — smoothed routes can hold one
             // far waypoint, and jumping to it re-created the far-carrot
             // rubber band (ceiling shuffle, user 2026-07-22)
-            const t = (0.28 - acc) / seg
+            const t = (0.28 * RS - acc) / seg
             px2 = cx + (wp.x - cx) * t
             py2 = cy + (wp.y - cy) * t
             break
@@ -643,12 +660,12 @@ export class OrganismSimulation {
       let dest = { x: px2, y: py2 }
       const dsd = this.surfaceDist(dest.x, dest.y)
       if (dsd > shellBand) dest = this.projectToSurface(dest.x, dest.y, shellBand * 0.8)
-      if (Math.hypot(dest.x - p.posX[0], dest.y - p.posY[0]) < 0.08 && Math.hypot(ix - p.posX[0], iy - p.posY[0]) > 0.15) {
+      if (Math.hypot(dest.x - p.posX[0], dest.y - p.posY[0]) < 0.08 * RS && Math.hypot(ix - p.posX[0], iy - p.posY[0]) > 0.15 * RS) {
         this.surfaceNormalInto(dest.x, dest.y, this.normal2)
         const tgX = -this.normal2.y
         const tgY = this.normal2.x
         const sgn = tgX * (ix - dest.x) + tgY * (iy - dest.y) >= 0 ? 1 : -1
-        dest = this.projectToSurface(dest.x + tgX * sgn * 0.14, dest.y + tgY * sgn * 0.14, shellBand * 0.8)
+        dest = this.projectToSurface(dest.x + tgX * sgn * 0.14 * RS, dest.y + tgY * sgn * 0.14 * RS, shellBand * 0.8)
       }
       this.intentX = dest.x
       this.intentY = dest.y
@@ -660,7 +677,7 @@ export class OrganismSimulation {
       this.pauseUntil = -1
     }
     if (this.state === 'pursue') {
-      const reached = Math.hypot(this.intentX - p.posX[0], this.intentY - p.posY[0]) < 0.06
+      const reached = Math.hypot(this.intentX - p.posX[0], this.intentY - p.posY[0]) < 0.06 * RS
       const goalJumped = Math.hypot(ix - this.decisionGoalX, iy - this.decisionGoalY) > 0.35 && this.time - this.lastDecisionAt > 0.5
       if (!this.localSet || this.time > this.localStaleAt || goalJumped) decide()
       else if (reached) {
@@ -681,7 +698,7 @@ export class OrganismSimulation {
     const tdy = this.intentY - p.posY[0]
     const tlen = Math.hypot(tdx, tdy)
     const goalDist = finalGoalDist >= 0 ? finalGoalDist : tlen
-    const moving = goalDist > (this.pointerActive ? 0.13 : 0.05)
+    const moving = goalDist > (this.pointerActive ? 0.13 : 0.05) * RS
     const rawTX = moving && tlen > 1e-4 ? tdx / tlen : 0
     const rawTY = moving && tlen > 1e-4 ? tdy / tlen : 0
     // stalking: travel direction is EASED — waypoint switches turn the
@@ -900,8 +917,12 @@ export class OrganismSimulation {
           const cornerDot = travelDirX * rawTX + travelDirY * rawTY
           const cornerEase = 0.55 + 0.45 * Math.max(0, Math.min(1, cornerDot))
           const gain = (1.2 + 0.15 * Math.sin(env * Math.PI)) * cornerEase
-          const pullX = this.stanceX + travelDirX * this.maxReach * 0.5
-          const pullY = this.stanceY + travelDirY * this.maxReach * 0.5
+          // pull lead sets actual walk speed (v ≈ lead × gain). Config speeds
+          // above the site default extend the lead (game mode); at default
+          // tuning the maxReach term dominates — site behavior unchanged
+          const lead = Math.max(this.maxReach * 0.5, (cfg.behavior.maximumCoreSpeed * this.viewportAspect * 0.9) / 1.35)
+          const pullX = this.stanceX + travelDirX * lead
+          const pullY = this.stanceY + travelDirY * lead
           const vk = 1 - Math.exp((-dt / 0.22) * Math.LN2)
           this.coreSmVX += ((pullX - p.posX[0]) * gain - this.coreSmVX) * vk
           this.coreSmVY += ((pullY - p.posY[0]) * gain - this.coreSmVY) * vk
@@ -932,11 +953,20 @@ export class OrganismSimulation {
           p.posX[0] += mx
           p.posY[0] += my
         } else {
-          // no plantable footing (glyph pockets, dead pads): slither at full
-          // walk speed STRAIGHT toward the local destination — the surface
-          // frame is meaningless in a pocket (normal spins, tangent noise)
-          const edx = this.intentX - p.posX[0]
-          const edy = this.intentY - p.posY[0]
+          // no plantable footing: REATTACH first when floating beyond limb
+          // reach (small bodies in big voids equilibrated mid-air between
+          // hover spring and intent pull — game world, user 2026-07-22),
+          // otherwise slither straight toward the local destination
+          let edx: number
+          let edy: number
+          if (sd > this.maxReach * 0.7) {
+            const g = this.projectToSurface(p.posX[0], p.posY[0], this.maxReach * 0.25)
+            edx = g.x - p.posX[0]
+            edy = g.y - p.posY[0]
+          } else {
+            edx = this.intentX - p.posX[0]
+            edy = this.intentY - p.posY[0]
+          }
           const el = Math.hypot(edx, edy)
           if (el > 1e-4) {
             p.posX[0] += (edx / el) * maxStep
@@ -1043,7 +1073,8 @@ export class OrganismSimulation {
         const rootI = p.indexOf(a, 0)
         const stretch = Math.hypot(pl.x - p.posX[rootI], pl.y - p.posY[rootI])
         const bad = !this.bridgeClear(p.posX[rootI], p.posY[rootI], pl.x, pl.y) || stretch > this.chainLen[a] * 1.3
-        const behind = (pl.x - p.posX[0]) * travelDirX + (pl.y - p.posY[0]) * travelDirY < -this.chainLen[a] * 0.3
+        // margin floored: at game scales chainLen*0.3 fired on every drift
+        const behind = (pl.x - p.posX[0]) * travelDirX + (pl.y - p.posY[0]) * travelDirY < -Math.max(this.chainLen[a] * 0.3, 0.022)
         const gait = S === 'pursue' && (stretch > this.chainLen[a] * 1.06 || behind) && this.time - this.lastReleaseTime > 0.5
         if (bad || gait || a === forceStep) {
           pl.active = false

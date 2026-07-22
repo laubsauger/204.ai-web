@@ -2,7 +2,7 @@
 
 Production site for the 204 creative technology studio (Lisbon). React 19 +
 Vite + TS SPA, deployed to GitHub Pages on every push to `main` (workflow in
-`.github/workflows/deploy.yml`). Live: https://laubsauger.github.io/204.ai-web/
+`.github/workflows/deploy.yml`). Live: https://204-ai.github.io/204.ai-web/
 
 `SPEC.md` is the project spec — goals (§G), constraints (§C), invariants (§V),
 task ledger (§T), bug log (§B). Read it before structural changes; log new
@@ -62,9 +62,9 @@ screenshot). Keep the home fold: hero + strap + CTA above 1080p fold.
 - `design/` = imported claude.ai/design prototype + Webflow scrape snapshot
   (`design/scrape/extracted.json`). Read-only reference; never imported by
   app code (SPEC V9).
-- Media is HOTLINKED from the Webflow CDN for now (SPEC V4 temp exception).
-  Non-hero stills use `-p-800` renditions with onError fallback. Self-host
-  once the redesign is approved.
+- Media is SELF-HOSTED in `public/media/` (SPEC V4; migrated via
+  `scripts/media-pipeline.mjs` — rerun-safe if new Webflow URLs appear in
+  content). Non-hero stills use `-p-800` renditions with onError fallback.
 - Animations: transform/opacity only, gated behind
   `prefers-reduced-motion: no-preference`. Entrance choreography: h1 is the
   only riser; media fades w/ scale-settle; secondary fades late; pagers wipe

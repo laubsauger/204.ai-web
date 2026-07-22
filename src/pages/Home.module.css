@@ -430,15 +430,21 @@
     border-top: 1px solid rgba(255, 255, 255, 0.08);
   }
 
+  .railHead {
+    padding: 10px 16px 6px;
+  }
+
   .railList {
     flex: none;
   }
 
   .chapter {
-    /* natural-height rows — flex-fill collapses inside an auto-height rail */
+    /* natural-height rows — flex-fill collapses inside an auto-height rail;
+       compact spacing so 4 rows don't shove the strap below the fold */
     flex: none;
     overflow: visible;
-    padding: 12px 16px;
+    padding: 8px 16px;
+    gap: 12px;
   }
 
   .chapterCat {
@@ -453,8 +459,8 @@
   }
 
   .thumb {
-    width: 112px;
-    height: 63px;
+    width: 84px;
+    height: 47px;
     min-height: 0;
     max-height: none;
   }
@@ -559,6 +565,10 @@
   }
 
   .partnersRow {
-    gap: 36px;
+    gap: 28px;
+  }
+
+  .partnersRow .logo {
+    height: 28px;
   }
 }

@@ -290,14 +290,13 @@ export function Home() {
 
 // Logo (linked when a url is set — internal → router link, external → new tab)
 function PartnerMark({ item, hidden = false }: { item: PartnerLogo; hidden?: boolean }) {
+  // plain src on purpose: srcset w-descriptors + sizes override the img's
+  // intrinsic width (box ballooned to `sizes`, logo painted tiny inside via
+  // object-fit) — 320w is sharp at every rendered size here
   const img = (
     <img
       src={rendition(item.logo, 320)}
-      srcSet={[160, 320, 500].map((w) => `${rendition(item.logo, w as 160 | 320 | 500)} ${w}w`).join(', ')}
-      /* lazy → `auto` resolves to the logo's real rendered width */
-      sizes="auto, 200px"
       onError={(e) => {
-        e.currentTarget.srcset = ''
         if (e.currentTarget.src !== item.logo) e.currentTarget.src = item.logo
       }}
       alt={hidden ? '' : item.name}
