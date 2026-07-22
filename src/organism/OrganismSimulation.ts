@@ -185,6 +185,18 @@ export class OrganismSimulation {
     this.maxReach = Math.max(...Array.from(this.chainLen)) + particles.radius[0]
   }
 
+  /** Cumulative growth factor (game mode): reach, stride and jump range
+      all scale with body size — evolution opens far routes and closes
+      narrow squeezes (nav clearance derives from the scaled core radius). */
+  creatureScale = 1
+  applyScale(rel: number) {
+    if (!(rel > 0) || rel === 1) return
+    this.creatureScale *= rel
+    for (let i = 0; i < this.restLengths.length; i++) this.restLengths[i] *= rel
+    for (let a = 0; a < this.chainLen.length; a++) this.chainLen[a] *= rel
+    this.maxReach *= rel
+  }
+
   invalidateRoute() {
     this.route = null
     // layout changed — failed goals may be reachable now
@@ -721,12 +733,12 @@ export class OrganismSimulation {
           }
           const cooled = this.time - this.lastJumpEnd > 3
           const notReturn = Math.hypot(land.x - this.lastJumpFromX, land.y - this.lastJumpFromY) > 0.25
-          if (cooled && notReturn && arcClear && landSane && goalDist > 0.2 && gap > this.maxReach * 1.1 && gap < 0.28) {
+          if (cooled && notReturn && arcClear && landSane && goalDist > 0.2 && gap > this.maxReach * 1.1 && gap < 0.28 * this.creatureScale) {
             this.jumpSX = p.posX[0]
             this.jumpSY = p.posY[0]
             this.jumpEX = land.x
             this.jumpEY = land.y
-            this.jumpDur = Math.max(0.5, gap / 0.3) // slower, shorter hops (user 2026-07-22)
+            this.jumpDur = Math.max(0.62, gap / 0.26) // slower, shorter hops (user 2026-07-22)
             this.jumpT = 0
             for (const pl of this.plants) pl.active = false
             for (const sw of this.swings) sw.active = false
@@ -791,7 +803,9 @@ export class OrganismSimulation {
     if (S === 'jump') {
       this.jumpT += dt / this.jumpDur
       const t01 = Math.min(1, this.jumpT)
-      const ease = t01 * t01 * (3 - 2 * t01)
+      // quintic smootherstep: zero velocity AND acceleration at both ends —
+      // takeoff/landing lose the jerk (user 2026-07-22)
+      const ease = t01 * t01 * t01 * (t01 * (t01 * 6 - 15) + 10)
       const upx = -(this.jumpEY - this.jumpSY)
       const upy = this.jumpEX - this.jumpSX
       const ul = Math.hypot(upx, upy) || 1
@@ -801,6 +815,8 @@ export class OrganismSimulation {
       p.prevX[0] = p.posX[0]
       p.prevY[0] = p.posY[0]
       if (t01 >= 1) {
+        this.coreSmVX = 0 // land soft: no stale glide velocity kick
+        this.coreSmVY = 0
         this.lastJumpEnd = this.time
         this.lastJumpFromX = this.jumpSX
         this.lastJumpFromY = this.jumpSY

@@ -35,7 +35,7 @@ export async function detectCapabilities(): Promise<OrganismCapabilities> {
   }
 }
 
-const LAB_PAGE = typeof location !== 'undefined' && location.pathname.includes('organism-lab')
+const LAB_PAGE = typeof location !== 'undefined' && /organism-(lab|game)/.test(location.pathname)
 
 function debugViewFromQuery(): number {
   if (!import.meta.env.DEV && !LAB_PAGE) return 0

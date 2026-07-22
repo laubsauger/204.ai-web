@@ -13,6 +13,7 @@ export default defineConfig({
         // shareable organism sandbox (user 2026-07-22) — a real page in
         // prod; the SITE never mounts the organism (no bleed)
         'organism-lab': resolve(__dirname, 'organism-lab.html'),
+        'organism-game': resolve(__dirname, 'organism-game.html'),
       },
     },
   },

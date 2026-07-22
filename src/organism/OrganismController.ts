@@ -91,6 +91,17 @@ export class OrganismController {
     this.collector.invalidate()
   }
 
+  /** Game mode growth: scales body radii + solver reach; the next dirty
+      pass rebuilds nav with the larger clearance (corridors close). */
+  setCreatureScale(scale: number) {
+    const rel = scale / this.simulation.creatureScale
+    if (!(rel > 0) || Math.abs(rel - 1) < 1e-4) return
+    const p = this.particles
+    for (let i = 0; i < p.count; i++) p.radius[i] *= rel
+    this.simulation.applyScale(rel)
+    this.collector.invalidate()
+  }
+
   private lastScrollY: number | null = null
   private lastFrameMs: number | null = null
 
