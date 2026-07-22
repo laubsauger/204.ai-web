@@ -657,7 +657,11 @@ export class OrganismSimulation {
       const goalJumped = Math.hypot(ix - this.decisionGoalX, iy - this.decisionGoalY) > 0.35 && this.time - this.lastDecisionAt > 0.5
       if (!this.localSet || this.time > this.localStaleAt || goalJumped) decide()
       else if (reached) {
-        if (this.pauseUntil < 0) this.pauseUntil = this.time + 0.15 + this.rng() * 0.3 // deliberate beat
+        // contemplation beats only when AMBLING — during an active chase the
+        // stop-start read as stutter (user 2026-07-22)
+        const chasing = this.pointerActive && Math.hypot(ix - p.posX[0], iy - p.posY[0]) > 0.3
+        if (chasing) decide()
+        else if (this.pauseUntil < 0) this.pauseUntil = this.time + 0.1 + this.rng() * 0.2
         else if (this.time > this.pauseUntil) decide()
       }
     } else if (this.state === 'rest' || this.state === 'settle' || this.state === 'sniff') {
@@ -1012,7 +1016,7 @@ export class OrganismSimulation {
       // stagnation breaker (T41): traveling but no step for 1.2s = the
       // mid-stride equilibrium — force the most-behind foot to step
       let forceStep = -1
-      if (S === 'pursue' && moving && this.time - this.lastReleaseTime > 1.4) {
+      if (S === 'pursue' && moving && this.time - this.lastReleaseTime > 0.9) {
         let worstDot = Infinity
         for (let a = 0; a < p.appendageCount; a++) {
           if (!this.isLeg[a]) continue
