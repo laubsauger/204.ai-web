@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { ICONS, type IconName } from '../components/icons'
 import { useHead } from '../hooks/useHead'
 import { trackLead, trackMapLoad } from '../lib/analytics'
@@ -6,6 +6,26 @@ import { BUDGET_RANGES, CONTACT } from '../data/studio'
 import styles from './Contact.module.css'
 
 const MAPS_URL = 'https://www.google.com/maps/search/?api=1&query=R.+Ferreira+Lapa+12A,+1150-157+Lisboa'
+
+// Real form backend when configured (POST JSON, 2xx = delivered); without it
+// the form falls back to the visitor's mail client, same as before.
+const FORM_ENDPOINT = import.meta.env.VITE_FORM_ENDPOINT as string | undefined
+
+// reCAPTCHA Enterprise (invisible, score-based). Script is injected only on
+// first form interaction (click-to-load pattern, SPEC V4) — never on page
+// load. Unset = no captcha.
+const RECAPTCHA_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY as string | undefined
+
+declare global {
+  interface Window {
+    grecaptcha?: {
+      enterprise?: {
+        ready: (cb: () => void) => void
+        execute: (key: string, opts: { action: string }) => Promise<string>
+      }
+    }
+  }
+}
 
 const INFO: Array<[IconName, string, string, string?]> = [
   ['email', 'EMAIL', CONTACT.email, `mailto:${CONTACT.email}`],
@@ -20,12 +40,28 @@ export function Contact() {
     'Send a brief, not a form. Three lines: who you are, what you’re making, when you need it by.',
   )
   const [brief, setBrief] = useState({ name: '', org: '', email: '', budget: '', scope: '' })
-  const [sent, setSent] = useState(false)
+  const [trap, setTrap] = useState('') // honeypot — humans never see the field
+  const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
+  const captchaRequested = useRef(false)
 
-  const submit = (e: FormEvent) => {
-    e.preventDefault()
-    trackLead(brief.budget)
-    // no backend (SPEC C8) — deliver the brief via the visitor's mail client
+  // lazy-inject the recaptcha script the moment someone starts on the form
+  const loadCaptcha = () => {
+    if (!RECAPTCHA_KEY || captchaRequested.current) return
+    captchaRequested.current = true
+    const s = document.createElement('script')
+    s.src = `https://www.google.com/recaptcha/enterprise.js?render=${RECAPTCHA_KEY}`
+    s.async = true
+    document.head.appendChild(s)
+  }
+
+  const captchaToken = async (): Promise<string> => {
+    const g = window.grecaptcha?.enterprise
+    if (!RECAPTCHA_KEY || !g) return '' // key unset or script blocked — server decides
+    await new Promise<void>((r) => g.ready(r))
+    return g.execute(RECAPTCHA_KEY, { action: 'brief' })
+  }
+
+  const briefMailto = () => {
     const subject = `Brief — ${brief.name || 'new project'}`
     const body = [
       `Name: ${brief.name}`,
@@ -37,8 +73,34 @@ export function Contact() {
     ]
       .filter(Boolean)
       .join('\n')
-    window.location.href = `mailto:${CONTACT.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
-    setSent(true)
+    return `mailto:${CONTACT.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+  }
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault()
+    if (state === 'sending') return
+    if (!FORM_ENDPOINT) {
+      // no endpoint configured — deliver the brief via the visitor's mail client
+      trackLead(brief.budget)
+      window.location.href = briefMailto()
+      setState('sent')
+      return
+    }
+    setState('sending')
+    try {
+      const token = await captchaToken()
+      const res = await fetch(FORM_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...brief, website: trap, token }),
+        signal: AbortSignal.timeout(12000),
+      })
+      if (!res.ok) throw new Error(`form endpoint ${res.status}`)
+      trackLead(brief.budget)
+      setState('sent')
+    } catch {
+      setState('error')
+    }
   }
 
   const replyBy = new Date(Date.now() + 2 * 86400000).toDateString().slice(4)
@@ -86,7 +148,7 @@ export function Contact() {
 
       <div className={`${styles.panel} anim-fade`}>
         <div className="t-label" style={{ marginBottom: 20 }}>/ BRIEF INTAKE · v02</div>
-        {sent ? (
+        {state === 'sent' ? (
           <div className={styles.sent}>
             <div className={`t-mono ${styles.sentBadge}`}>● RECEIVED</div>
             <div className={`t-display ${styles.sentTitle}`}>Thank you.</div>
@@ -95,7 +157,18 @@ export function Contact() {
             </div>
           </div>
         ) : (
-          <form onSubmit={submit}>
+          <form onSubmit={submit} onFocus={loadCaptcha}>
+            {/* honeypot — visually hidden; bots that fill it get dropped server-side */}
+            <input
+              type="text"
+              name="website"
+              value={trap}
+              onChange={(e) => setTrap(e.target.value)}
+              className={styles.trap}
+              tabIndex={-1}
+              autoComplete="off"
+              aria-hidden="true"
+            />
             {(
               [
                 ['name', 'Name', 'text', 'name', false],
@@ -143,9 +216,31 @@ export function Contact() {
                 className={styles.textarea}
               />
             </label>
-            <button type="submit" className={`t-mono ${styles.submit}`}>
-              → Send Brief
+            {state === 'error' && (
+              <div className={`t-mono ${styles.error}`} role="alert">
+                ✕ COULDN'T SEND — TRY AGAIN OR{' '}
+                <a href={briefMailto()} className={styles.errorLink}>
+                  EMAIL US DIRECTLY
+                </a>
+              </div>
+            )}
+            <button type="submit" className={`t-mono ${styles.submit}`} disabled={state === 'sending'}>
+              {state === 'sending' ? '● SENDING…' : '→ Send Brief'}
             </button>
+            {RECAPTCHA_KEY && (
+              // required attribution — we hide the floating badge (Google permits
+              // this when the notice is shown inline instead)
+              <p className={`t-mono ${styles.captchaNote}`}>
+                PROTECTED BY RECAPTCHA ·{' '}
+                <a href="https://policies.google.com/privacy" target="_blank" rel="noreferrer">
+                  PRIVACY
+                </a>{' '}
+                ·{' '}
+                <a href="https://policies.google.com/terms" target="_blank" rel="noreferrer">
+                  TERMS
+                </a>
+              </p>
+            )}
           </form>
         )}
       </div>

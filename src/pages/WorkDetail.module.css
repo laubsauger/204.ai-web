@@ -206,6 +206,11 @@
   border-top: 1px solid var(--hairline);
 }
 
+/* sparse pages (no body/film/gallery): pull the pager up so it clears the fold */
+.pagerTight {
+  margin-top: 24px;
+}
+
 .pagerLink {
   display: flex;
   flex-direction: column;

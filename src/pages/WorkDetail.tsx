@@ -20,6 +20,7 @@ export function WorkDetail() {
 
   if (!w) return <NotFound />
 
+  const hasMore = Boolean(w.body || w.youtube?.length || w.gallery)
   const prev = WORKS[(idx - 1 + WORKS.length) % WORKS.length]
   const next = WORKS[(idx + 1) % WORKS.length]
   // close the loop back to the practice this project belongs to
@@ -74,24 +75,26 @@ export function WorkDetail() {
         </aside>
       </div>
 
-      <div className={`${styles.main} anim-fade`}>
-        {w.body && <p className={`t-serif ${styles.body}`}>{w.body}</p>}
+      {hasMore && (
+        <div className={`${styles.main} anim-fade`}>
+          {w.body && <p className={`t-serif ${styles.body}`}>{w.body}</p>}
 
-        {w.youtube?.map((id) => <YoutubeEmbed key={id} id={id} title={w.title} />)}
+          {w.youtube?.map((id) => <YoutubeEmbed key={id} id={id} title={w.title} />)}
 
-        {w.gallery && (
-          <div className={styles.gallery}>
-            {w.gallery.map((src) => (
-              <div key={src} className={styles.galleryItem}>
-                <img src={src} alt={`${w.title} — installation photo`} loading="lazy" decoding="async" />
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+          {w.gallery && (
+            <div className={styles.gallery}>
+              {w.gallery.map((src) => (
+                <div key={src} className={styles.galleryItem}>
+                  <img src={src} alt={`${w.title} — installation photo`} loading="lazy" decoding="async" />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* prev / next */}
-      <nav className={styles.pager} aria-label="More work">
+      <nav className={`${styles.pager} ${hasMore ? '' : styles.pagerTight}`} aria-label="More work">
         <Link to={`/work/${prev.slug}`} state={{ pager: 'prev' }} className={`${styles.pagerLink} anim-wipe-l`}>
           <span className={`t-mono ${styles.pagerLabel}`}>← PREV</span>
           <span className={`t-display ${styles.pagerTitle}`}>{prev.title}</span>

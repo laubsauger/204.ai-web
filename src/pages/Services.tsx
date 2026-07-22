@@ -60,7 +60,7 @@ function ServiceCard({ s, last }: { s: Service; last: boolean }) {
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
     >
-      <div className={styles.cardBg} style={{ opacity: hover ? 0.55 : 0.26 }}>
+      <div className={styles.cardBg} style={{ opacity: hover ? 0.7 : 0.42 }}>
         <div className={styles.cardBgInner} style={{ transform: hover ? 'scale(1.03)' : 'scale(1)' }}>
           <MediaStill scene={s.scene} media={s.still ? { still: s.still } : undefined} mini scrim />
         </div>

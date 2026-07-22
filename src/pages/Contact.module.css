@@ -76,6 +76,15 @@
   margin-bottom: 16px;
 }
 
+/* honeypot — off-canvas, not display:none (bots skip hidden inputs) */
+.trap {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
 .fieldLabel {
   display: block;
   font-size: 9px;
@@ -159,6 +168,52 @@
 
 .submit:hover {
   filter: brightness(1.1);
+}
+
+.submit:disabled {
+  opacity: 0.6;
+  cursor: default;
+  filter: none;
+}
+
+.error {
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: var(--accent-text);
+  margin: 0 0 12px;
+  line-height: 1.6;
+}
+
+.errorLink {
+  color: var(--fg);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.errorLink:hover {
+  color: var(--accent-text);
+}
+
+.captchaNote {
+  margin: 12px 0 0;
+  font-size: 8px;
+  letter-spacing: 1.5px;
+  color: var(--dim);
+  text-align: center;
+}
+
+.captchaNote a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.captchaNote a:hover {
+  color: var(--fg);
+}
+
+/* badge hidden — inline notice above stands in for it */
+:global(.grecaptcha-badge) {
+  visibility: hidden;
 }
 
 /* ─── sent state ─── */

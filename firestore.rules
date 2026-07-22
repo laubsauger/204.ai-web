@@ -1,0 +1,11 @@
+rules_version = '2';
+
+// No client access at all — briefs/mail are written and read exclusively via
+// the admin SDK (Cloud Function / console), which bypasses these rules.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
