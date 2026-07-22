@@ -31,6 +31,7 @@ export class OrganismRenderer {
     creaseData: THREE.Vector4[],
     maskTex: THREE.Texture,
     sdfTex: THREE.Texture,
+    trailTex: THREE.Texture,
   ) {
     this.renderer = renderer
     this.fieldUniforms = makeCreatureFieldUniforms(particles, lobeData, creaseData)
@@ -54,6 +55,7 @@ export class OrganismRenderer {
       distance,
       maskTex,
       sdfTex,
+      trailTex,
       uvNode,
       simPos,
       aspect: this.aspect,

@@ -133,6 +133,7 @@ export function buildOutputNodes(opts: {
   distance: Node
   maskTex: THREE.Texture
   sdfTex: THREE.Texture
+  trailTex: THREE.Texture
   uvNode: Vec2Node
   simPos: Vec2Node
   aspect: Node
@@ -216,7 +217,10 @@ export function buildOutputNodes(opts: {
   const bodyColor = shaded.mul(float(1).sub(accentW)).add(glowColor.mul(accentW))
   // interior breathes slightly translucent — depth without heaviness
   const insideAlpha = float(1).sub(smoothstep(0, R * 0.5, distance.negate()).mul(0.16))
-  const opacityWithHaze = coverage.mul(opts.opacity).mul(insideAlpha).add(haze.mul(haze).mul(0.4)).clamp(0, 1)
+  // slime residue (user 2026-07-22): faint pale film where the body just
+  // was — trail canvas decays on the CPU, shader only reads it
+  const residue = texture(opts.trailTex, uvNode).x.mul(float(1).sub(coverage))
+  const opacityWithHaze = coverage.mul(opts.opacity).mul(insideAlpha).add(haze.mul(haze).mul(0.4)).add(residue.mul(0.1)).clamp(0, 1)
 
   if (!opts.includeDebug) {
     return { colorNode: bodyColor, opacityNode: opacityWithHaze }

@@ -80,6 +80,7 @@ export async function mountOrganism(
     controller.creaseData,
     controller.mask.texture,
     controller.field.texture,
+    controller.trail.texture,
   )
   renderer.debugView.value = debugViewFromQuery()
   controller.deriveTorso()
