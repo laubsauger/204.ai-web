@@ -134,6 +134,11 @@ export class OrganismSimulation {
   /* seekers: eased targets */
   private seekX: Float32Array
   private seekY: Float32Array
+  /* universal limb-target low-pass (user 2026-07-22): kills single-frame
+     pose snaps on release / role swap / jump transitions */
+  private limbTX: Float32Array
+  private limbTY: Float32Array
+  private limbTInit: boolean[] = []
 
   /* proximity glow (user 2026-07-21): nearest tip heats toward the brand
      accent as it approaches the cursor's touch radius */
@@ -158,6 +163,9 @@ export class OrganismSimulation {
     this.chainLen = new Float32Array(p.appendageCount)
     this.seekX = new Float32Array(p.appendageCount)
     this.seekY = new Float32Array(p.appendageCount)
+    this.limbTX = new Float32Array(p.appendageCount)
+    this.limbTY = new Float32Array(p.appendageCount)
+    for (let a = 0; a < p.appendageCount; a++) this.limbTInit.push(false)
     for (let a = 0; a < p.appendageCount; a++) {
       for (let j = 0; j < p.jointsPerAppendage - 1; j++) {
         const i0 = p.indexOf(a, j)
@@ -197,6 +205,20 @@ export class OrganismSimulation {
     for (let i = 0; i < this.restLengths.length; i++) this.restLengths[i] *= rel
     for (let a = 0; a < this.chainLen.length; a++) this.chainLen[a] *= rel
     this.maxReach *= rel
+  }
+
+  /** Smooth a limb's IK target before solving — static targets converge
+      exactly (planted feet stay glued), transitions glide instead of snap. */
+  private solveLimbSmoothed(a: number, rootX: number, rootY: number, tx: number, ty: number, bend: number, dt: number, wave = 0) {
+    if (!this.limbTInit[a]) {
+      this.limbTX[a] = tx
+      this.limbTY[a] = ty
+      this.limbTInit[a] = true
+    }
+    const lk = 1 - Math.exp((-dt / 0.09) * Math.LN2)
+    this.limbTX[a] += (tx - this.limbTX[a]) * lk
+    this.limbTY[a] += (ty - this.limbTY[a]) * lk
+    this.solveLimb(a, rootX, rootY, this.limbTX[a], this.limbTY[a], bend, wave)
   }
 
   invalidateRoute() {
@@ -1145,7 +1167,14 @@ export class OrganismSimulation {
           tx = rootX - jumpDirX * this.chainLen[a] * (0.75 + 0.1 * Math.sin(a * 2.3))
           ty = rootY - jumpDirY * this.chainLen[a] * (0.75 + 0.1 * Math.sin(a * 2.3))
         }
-        this.solveLimb(a, rootX, rootY, tx, ty, this.chainLen[a] * 0.12, 0.3)
+        this.solveLimbSmoothed(a, rootX, rootY, tx, ty, this.chainLen[a] * 0.12, dt, 0.3)
+        if (!this.isLeg[a]) {
+          // keep seeker ease-state tracking the actual tip so the jump→walk
+          // handoff is continuous, not a snap to a stale seek target
+          const tipI2 = p.indexOf(a, p.jointsPerAppendage - 1)
+          this.seekX[a] = p.posX[tipI2]
+          this.seekY[a] = p.posY[tipI2]
+        }
         continue
       }
       if (this.isLeg[a]) {
@@ -1165,11 +1194,23 @@ export class OrganismSimulation {
           ty = sw.fromY + (sw.toY - sw.fromY) * e + surfNY * lift
           bend = this.chainLen[a] * 0.12
         } else {
-          tx = rootX + Math.cos(d.restAngle) * this.chainLen[a] * 0.55
-          ty = rootY + Math.sin(d.restAngle) * this.chainLen[a] * 0.55
-          bend = this.chainLen[a] * 0.06
+          // free foot SEARCHES contact: arc toward its projected footfall on
+          // the surface, not a mid-air rest slot (user 2026-07-22: feet
+          // spread out touching nothing looked wrong)
+          const slot = this.slotOf[a] >= 0 ? this.slotOf[a] : a
+          const c = this.projectToSurface(
+            p.posX[0] + tangX * [-0.55, 0, 0.55][slot % 3] * this.chainLen[a] * 1.05,
+            p.posY[0] + tangY * [-0.55, 0, 0.55][slot % 3] * this.chainLen[a] * 1.05,
+            0,
+          )
+          const reach = Math.hypot(c.x - rootX, c.y - rootY)
+          const cap = this.chainLen[a] * 0.92
+          const f = reach > cap ? cap / reach : 1
+          tx = rootX + (c.x - rootX) * f
+          ty = rootY + (c.y - rootY) * f
+          bend = this.chainLen[a] * 0.08
         }
-        this.solveLimb(a, rootX, rootY, tx, ty, bend, sw.active ? 0.35 : 0)
+        this.solveLimbSmoothed(a, rootX, rootY, tx, ty, bend, dt, sw.active ? 0.35 : 0)
       } else {
         let desX: number
         let desY: number
@@ -1226,7 +1267,7 @@ export class OrganismSimulation {
         const extFrac = Math.min(1, ext / this.chainLen[a])
         const tension = Math.max(0.12, 1.15 - extFrac) // taut at full strain
         const snake = Math.sin(this.time * (0.16 + (a - LEGS) * 0.05) * Math.PI * 2 + d.curlPhase) * this.chainLen[a] * 0.1 * snakeCalm * tension
-        this.solveLimb(a, rootX, rootY, this.seekX[a], this.seekY[a], snake)
+        this.solveLimbSmoothed(a, rootX, rootY, this.seekX[a], this.seekY[a], snake, dt)
       }
     }
 

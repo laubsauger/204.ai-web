@@ -118,9 +118,10 @@ export class ParticleBuffer {
       const serpFreq = 1.8 + rnd() * 1.6
       const serpPhase = rnd() * Math.PI * 2
       const serpAmp = 0.35 + rnd() * 0.5
-      const rootR = torsoRadius * (0.21 + rnd() * 0.1) * thickness // slimmer roots — chunky base (user 2026-07-22)
-      // tip capped vs root: slimmed roots inverted the taper on thin limbs
-      const tipR = Math.min(minimumTipRadius + rnd() * (maximumTipRadius - minimumTipRadius), rootR * 0.6)
+      const rootR = torsoRadius * (0.24 + rnd() * 0.1) * thickness // slender but not wispy (user 2026-07-22)
+      // tip capped vs root (taper stays monotonic) AND floored — capping
+      // alone made thin limbs needle-spiky (user 2026-07-22)
+      const tipR = Math.max(0.0038, Math.min(minimumTipRadius + rnd() * (maximumTipRadius - minimumTipRadius), rootR * 0.7))
       const segLen = torsoRadius * (0.44 + rnd() * 0.2) * lengthScale
 
       let x = this.posX[0] + Math.cos(angle) * torsoRadius * 0.55

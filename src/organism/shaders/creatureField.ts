@@ -224,7 +224,12 @@ export function buildOutputNodes(opts: {
   const accentW = glowF.add(haze.mul(float(1).sub(coverage))).clamp(0, 0.9)
   hot = hot.mul(0.5)
   const glowColor = ACCENT.add(vec3(hot))
-  const bodyColor = shaded.mul(float(1).sub(accentW)).add(glowColor.mul(accentW))
+  // structure survives the glow (user 2026-07-22): cells modulate the
+  // accent instead of being replaced by it, and the membrane rim cuts
+  // through — orange proximity keeps anatomy readable
+  const structure = float(0.5).add(tone.mul(0.65))
+  const accentCut = accentW.mul(float(1).sub(rim.mul(0.55)))
+  const bodyColor = shaded.mul(float(1).sub(accentCut)).add(glowColor.mul(structure).mul(accentCut))
   // interior breathes slightly translucent — depth without heaviness
   const insideAlpha = float(1).sub(smoothstep(0, R * 0.5, distance.negate()).mul(0.16))
   const opacityWithHaze = coverage.mul(opts.opacity).mul(insideAlpha).add(haze.mul(haze).mul(0.4)).clamp(0, 1)
