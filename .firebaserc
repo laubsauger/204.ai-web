@@ -1,5 +1,13 @@
 {
   "projects": {
     "default": "studio204-web"
+  },
+  "targets": {},
+  "etags": {
+    "studio204-web": {
+      "extensionInstances": {
+        "firestore-send-email": "5f2bf19ff4272a236915d363734250d98c8e027bfc93e596f0386fe2f8a7eec2"
+      }
+    }
   }
 }
