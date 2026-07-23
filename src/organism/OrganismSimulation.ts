@@ -81,6 +81,7 @@ export class OrganismSimulation {
   private walkStalled = false
   /* discrete locomotion decisions (user 2026-07-21: self-propelled, no
      rubber band) — the body commits to a local destination and walks it */
+  private lastSlideSgn = 0
   private localSet = false
   private localStaleAt = 0
   private decisionGoalX = 1e9
@@ -215,13 +216,13 @@ export class OrganismSimulation {
 
   /** Smooth a limb's IK target before solving — static targets converge
       exactly (planted feet stay glued), transitions glide instead of snap. */
-  private solveLimbSmoothed(a: number, rootX: number, rootY: number, tx: number, ty: number, bend: number, dt: number, wave = 0) {
+  private solveLimbSmoothed(a: number, rootX: number, rootY: number, tx: number, ty: number, bend: number, dt: number, wave = 0, tau = 0.09) {
     if (!this.limbTInit[a]) {
       this.limbTX[a] = tx
       this.limbTY[a] = ty
       this.limbTInit[a] = true
     }
-    const lk = 1 - Math.exp((-dt / 0.09) * Math.LN2)
+    const lk = 1 - Math.exp((-dt / tau) * Math.LN2)
     this.limbTX[a] += (tx - this.limbTX[a]) * lk
     this.limbTY[a] += (ty - this.limbTY[a]) * lk
     this.solveLimb(a, rootX, rootY, this.limbTX[a], this.limbTY[a], bend, wave)
@@ -587,7 +588,7 @@ export class OrganismSimulation {
       starved = dNow > 0.25 * RS && this.time - this.lastProgressTime > 2
       // capture stall BEFORE the starved reroute resets the progress clock —
       // jumps are a last resort, allowed only once walking stopped helping
-      this.walkStalled = this.time - this.lastProgressTime > 3
+      this.walkStalled = this.time - this.lastProgressTime > 2.2
     } else {
       this.hungerBest = Infinity
     }
@@ -672,7 +673,11 @@ export class OrganismSimulation {
         this.surfaceNormalInto(dest.x, dest.y, this.normal2)
         const tgX = -this.normal2.y
         const tgY = this.normal2.x
-        const sgn = tgX * (ix - dest.x) + tgY * (iy - dest.y) >= 0 ? 1 : -1
+        // side hysteresis: alternate slides created the back-and-forth
+        // bobbing loop — keep last side unless clearly wrong
+        const dot = tgX * (ix - dest.x) + tgY * (iy - dest.y)
+        const sgn = Math.abs(dot) < 0.03 && this.lastSlideSgn !== 0 ? this.lastSlideSgn : dot >= 0 ? 1 : -1
+        this.lastSlideSgn = sgn
         dest = this.projectToSurface(dest.x + tgX * sgn * 0.14 * RS, dest.y + tgY * sgn * 0.14 * RS, shellBand * 0.8)
       }
       this.intentX = dest.x
@@ -689,11 +694,13 @@ export class OrganismSimulation {
       const goalJumped = Math.hypot(ix - this.decisionGoalX, iy - this.decisionGoalY) > 0.35 && this.time - this.lastDecisionAt > 0.5
       if (!this.localSet || this.time > this.localStaleAt || goalJumped) decide()
       else if (reached) {
-        // contemplation beats only when AMBLING — during an active chase the
-        // stop-start read as stutter (user 2026-07-22)
+        // contemplation beats only when AMBLING; chase re-decides at a
+        // throttled cadence — immediate re-decide thrashed between two
+        // projected destinations (bobbing loop, user 2026-07-23)
         const chasing = this.pointerActive && Math.hypot(ix - p.posX[0], iy - p.posY[0]) > 0.3
-        if (chasing) decide()
-        else if (this.pauseUntil < 0) this.pauseUntil = this.time + 0.1 + this.rng() * 0.2
+        if (chasing) {
+          if (this.time - this.lastDecisionAt > 0.35) decide()
+        } else if (this.pauseUntil < 0) this.pauseUntil = this.time + 0.1 + this.rng() * 0.2
         else if (this.time > this.pauseUntil) decide()
       }
     } else if (this.state === 'rest' || this.state === 'settle' || this.state === 'sniff') {
@@ -797,7 +804,7 @@ export class OrganismSimulation {
           }
           const cooled = this.time - this.lastJumpEnd > 4.5
           const notReturn = Math.hypot(land.x - this.lastJumpFromX, land.y - this.lastJumpFromY) > 0.25
-          if (cooled && notReturn && arcClear && landSane && goalDist > 0.2 && gap > this.maxReach * 1.9 && gap < 0.34 * this.creatureScale) {
+          if (cooled && notReturn && arcClear && landSane && goalDist > 0.2 && gap > this.maxReach * 1.6 && gap < 0.34 * this.creatureScale) {
             // gaps within ~1.45 reach are STRETCH territory — fluid climbing
             // over shortcut hops (user 2026-07-22)
             this.jumpSX = p.posX[0]
@@ -1260,7 +1267,8 @@ export class OrganismSimulation {
           ty = rootY + (c.y - rootY) * f
           bend = this.chainLen[a] * 0.08
         }
-        this.solveLimbSmoothed(a, rootX, rootY, tx, ty, bend, dt, sw.active ? 0.35 : 0)
+        // planted feet ease FAST (ground contact reads solid); transitions soft
+        this.solveLimbSmoothed(a, rootX, rootY, tx, ty, bend, dt, sw.active ? 0.35 : 0, pl.active ? 0.03 : 0.09)
       } else {
         let desX: number
         let desY: number
