@@ -122,6 +122,10 @@ export async function mountOrganism(
   })
   if (import.meta.env.DEV || LAB_PAGE) {
     ;(window as unknown as Record<string, unknown>).__organismDebug = { controller }
+    // ?organism=brain → plan/state overlay (lab tooling, user 2026-07-23)
+    if (new URLSearchParams(location.search).get('organism') === 'brain') {
+      import('./DebugBrainOverlay').then((m) => m.mountBrainOverlay(controller))
+    }
   }
 
   return {

@@ -162,6 +162,8 @@ export class OrganismSimulation {
   dbgTravel: [number, number] = [0, 0]
   dbgStride = ''
   dbgJump = ''
+  dbgGoal: [number, number] = [0, 0]
+  dbgStarved = false
 
   constructor(
     private particles: ParticleBuffer,
@@ -232,6 +234,37 @@ export class OrganismSimulation {
     this.limbTX[a] += (tx - this.limbTX[a]) * lk
     this.limbTY[a] += (ty - this.limbTY[a]) * lk
     this.solveLimb(a, rootX, rootY, this.limbTX[a], this.limbTY[a], bend, wave)
+  }
+
+  /** Everything the brain overlay needs, as plain data (lab tooling). */
+  debugSnapshot() {
+    const p = this.particles
+    return {
+      state: this.state,
+      inState: this.time - this.stateSince,
+      core: [p.posX[0], p.posY[0]] as [number, number],
+      pointer: this.pointerActive ? ([this.pointerX, this.pointerY] as [number, number]) : null,
+      slowPointer: this.pointerActive ? ([this.slowPX, this.slowPY] as [number, number]) : null,
+      goal: this.dbgGoal,
+      intent: [this.intentX, this.intentY] as [number, number],
+      route: this.route ? this.route.points.map((q) => ({ x: q.x, y: q.y, jump: !!q.jump })) : [],
+      routeIdx: this.routeIdx,
+      goalUnreachable: this.route?.goalUnreachable ?? false,
+      travel: this.dbgTravel,
+      stance: [this.stanceX, this.stanceY] as [number, number],
+      plants: this.plants.map((pl, a) => ({ x: pl.x, y: pl.y, active: pl.active, isLeg: this.isLeg[a] })),
+      swings: this.swings.map((sw) => ({ active: sw.active, toX: sw.toX, toY: sw.toY, t: sw.t })),
+      goalDist: this.dbgGoalDist,
+      starved: this.dbgStarved,
+      walkStalled: this.walkStalled,
+      sniffing: this.sniffing,
+      stallAgo: this.time - this.lastProgressTime,
+      decisionAgo: this.time - this.lastDecisionAt,
+      hungerBest: this.hungerBest,
+      scale: this.creatureScale,
+      maxReach: this.maxReach,
+      jumpGates: this.dbgJump,
+    }
   }
 
   invalidateRoute() {
@@ -645,6 +678,9 @@ export class OrganismSimulation {
         if (Math.hypot(end.x - p.posX[0], end.y - p.posY[0]) < 0.16 * RS) this.sniffing = true
       }
     }
+
+    this.dbgGoal = [ix, iy]
+    this.dbgStarved = starved
 
     /* DISCRETE destination commitment — no continuous cursor servo.
        The body picks a local destination ~1 body-length ahead along the
