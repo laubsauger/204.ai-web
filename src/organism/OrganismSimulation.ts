@@ -63,6 +63,11 @@ export class OrganismSimulation {
   private slowPY = 0
   private pointerInit = false
   private pointerRampStart = -1
+  /* emotes (user 2026-07-23): startle flinch + arrival perk */
+  private startleUntil = -10
+  private lastStartle = -10
+  private perkUntil = -10
+  private prevPointerD = Infinity
 
   /* intention / navigation */
   intentX = 1.02
@@ -494,6 +499,7 @@ export class OrganismSimulation {
         this.slowPY = this.pointerRawY
         this.pointerInit = true
         this.pointerRampStart = this.time
+        this.perkUntil = this.time + 0.9 // noticed you — brief alert lift
         p.posX[1] = this.pointerRawX
         p.posY[1] = this.pointerRawY
         p.prevX[1] = p.posX[1]
@@ -583,6 +589,13 @@ export class OrganismSimulation {
       if (dNow < this.hungerBest - 0.015) {
         this.hungerBest = dNow
         this.lastProgressTime = this.time
+      }
+      // startle: cursor rushing AT the body → flinch (retract + crouch)
+      const approach = (this.prevPointerD - dNow) / Math.max(dt, 1e-4)
+      this.prevPointerD = dNow
+      if (dNow < 0.3 && approach > 0.55 && this.time - this.lastStartle > 4) {
+        this.startleUntil = this.time + 0.55
+        this.lastStartle = this.time
       }
 
       starved = dNow > 0.25 * RS && this.time - this.lastProgressTime > 2
@@ -999,7 +1012,7 @@ export class OrganismSimulation {
         for (const pl of this.plants) if (pl.active) anyPlant = true
         const speedNorm = Math.min(1, Math.hypot(this.coreVelX, this.coreVelY) / 0.08)
         const dip = 0.02 * Math.exp(-(this.time - this.lastPlantTime) / 0.35)
-        const crouch = this.state === 'sniff' ? 0.09 : 0
+        const crouch = this.time < this.startleUntil ? 0.12 : this.state === 'sniff' ? 0.09 : 0
         const hover = this.maxReach * (0.3 - crouch + Math.sin(this.time * 0.11 * Math.PI * 2 + 0.7) * 0.02 - speedNorm * 0.08 - dip)
         const clampE = anyPlant ? 0.05 : 0.07
         const gainE = anyPlant ? 1.6 : 1.2
@@ -1312,7 +1325,8 @@ export class OrganismSimulation {
         const strain = this.sniffing || yearn ? 0.92 + 0.08 * Math.sin(this.time * 0.045 * Math.PI * 2 + a * 1.3) + poke : 0
         // peaks touch FULL extension (clamped by the solver), then relax —
         // able to fully stretch, never parked there (user 2026-07-21)
-        const ext = this.chainLen[a] * (touching ? 1 : gesturing ? 0.95 : this.sniffing || yearn ? Math.min(1, strain) : this.pointerActive ? 0.85 + 0.08 * Math.sin(this.time * 0.11 * Math.PI * 2 + a) : 0.72 + 0.2 * Math.sin(this.time * 0.07 * Math.PI * 2 + a * 1.9))
+        const emote = this.time < this.startleUntil ? 0.55 : this.time < this.perkUntil ? 1.12 : 1
+        const ext = emote * this.chainLen[a] * (touching ? 1 : gesturing ? 0.95 : this.sniffing || yearn ? Math.min(1, strain) : this.pointerActive ? 0.85 + 0.08 * Math.sin(this.time * 0.11 * Math.PI * 2 + a) : 0.72 + 0.2 * Math.sin(this.time * 0.07 * Math.PI * 2 + a * 1.9))
         const ddx = desX - rootX
         const ddy = desY - rootY
         const dl = Math.hypot(ddx, ddy) || 1
@@ -1330,7 +1344,8 @@ export class OrganismSimulation {
     }
 
     /* breathing + squash (visual radii only) */
-    const breathe = 1 + Math.sin(this.breathePhase) * 0.03 + Math.sin(this.breathePhase2) * 0.025
+    const emoteAmp = this.time < this.startleUntil ? 0.4 : this.time < this.perkUntil ? 1.6 : 1
+    const breathe = 1 + (Math.sin(this.breathePhase) * 0.03 + Math.sin(this.breathePhase2) * 0.025) * emoteAmp
     p.activation[0] = breathe
     for (let a = 0; a < p.appendageCount; a++) {
       const rootI = p.indexOf(a, 0)
