@@ -6,6 +6,7 @@
     "rules": "firestore.rules"
   },
   "hosting": {
+    "site": "studio204-web",
     "public": "dist",
     "ignore": [
       "firebase.json",
