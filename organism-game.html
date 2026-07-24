@@ -70,6 +70,7 @@
         padding: 5px 9px; color: rgba(236,236,236,0.75); user-select: none;
       }
       #hud b { color: #c9442b; }
+      #hud a { color: rgba(236,236,236,0.55); }
       #stage-flash {
         position: fixed; left: 50%; top: 38%; transform: translateX(-50%); z-index: 2;
         font-family: 'Archivo Black', Impact, sans-serif; font-size: 6vh; text-transform: uppercase;
@@ -82,7 +83,8 @@
     </style>
   </head>
   <body>
-    <div id="hud">slime run — <b id="stage">hatchling</b> · food <b id="score">0</b> · size <b id="size">0.70</b>×</div>
+    <div id="hud">slime run — <b id="stage">hatchling</b> · food <b id="score">0</b> · size <b id="size">0.70</b>×
+      <span id="views">· views: <a href="?organism=final">final</a> · <a href="?organism=skeleton">skeleton</a> · <a href="?organism=limbs">limbs</a> · <a href="?organism=sdf">sdf</a> · <a href="?organism=brain">brain</a></span></div>
     <div id="msg">steer with the cursor. eat to evolve. the deep wants you bigger — the nooks want you small.</div>
     <div id="stage-flash"></div>
 
